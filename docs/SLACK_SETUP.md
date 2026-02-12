@@ -15,11 +15,14 @@ This guide shows you how to set up Slack integration with Conduit using a bot to
 1. In the left sidebar, click **"OAuth & Permissions"**
 2. Scroll down to **"Bot Token Scopes"**
 3. Click **"Add an OAuth Scope"** and add these scopes:
+   - `channels:history` - View messages in public channels
    - `channels:read` - View basic channel info
+   - `groups:history` - View messages in private channels
    - `groups:read` - View private channel info
+   - `im:history` - View messages in DMs
    - `im:read` - View DM info
+   - `mpim:history` - View messages in group DMs
    - `mpim:read` - View group DM info
-   - `search:read` - Search messages and files
    - `users:read` - View people in workspace
 
 ## Step 3: Install App to Workspace
