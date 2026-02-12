@@ -207,7 +207,7 @@ export class SlackProvider implements BusinessContextProvider {
     await context.globalState.update("slack-oauth-state", state);
 
     const redirectUri = "vscode://jerrychaitea.conduit/slack-callback";
-    const scopes = "search:read,channels:read,users:read,groups:read,im:read,mpim:read";
+    const scopes = "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read";
 
     const authUrl = `https://slack.com/oauth/v2/authorize?${new URLSearchParams({
       client_id: clientId,
