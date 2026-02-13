@@ -165,6 +165,14 @@ export class ChatPanel {
           msg.requestId,
           msg.answers
         );
+        // Persist the answer so it survives session restoration.
+        // Stored as a tool-result keyed by the question's requestId.
+        this.messageBuffer.push({
+          role: "tool-result",
+          text: JSON.stringify(msg.answers).slice(0, 2000),
+          toolCallId: msg.requestId,
+          timestamp: Date.now(),
+        });
         break;
       case "set-permission-mode":
         this.permissionMode = msg.mode;

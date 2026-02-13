@@ -149,14 +149,19 @@ export function UserResponsePanel({ item }: UserResponsePanelProps) {
             {showCustom[q.header] ? (
               <div className="question-option selected">
                 <div className="question-option-label">Other</div>
-                <textarea
+                <input
+                  type="text"
                   className="question-custom-input"
                   placeholder="Type your answer..."
-                  rows={2}
                   value={customTexts[q.header] || ""}
                   onChange={(e) =>
                     setCustomTexts((prev) => ({ ...prev, [q.header]: e.target.value }))
                   }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && customTexts[q.header]?.trim()) {
+                      submit({ [q.header]: customTexts[q.header].trim() });
+                    }
+                  }}
                   autoFocus
                 />
               </div>

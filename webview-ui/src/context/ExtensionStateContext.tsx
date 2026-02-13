@@ -55,10 +55,14 @@ function toolCallToItem(toolName: string, input: string, toolCallId: string): Me
   if (toolName === "AskUserQuestion") {
     try {
       const data = JSON.parse(input);
-      if (Array.isArray(data)) {
-        // Stored as JSON.stringify(questions) in bufferAndForward.
-        // Rendered as resolved since the question was already answered.
-        return { id: uid(), kind: "user-question", requestId: toolCallId, questions: data, answers: { _restored: "true" } };
+      // New format: stored as JSON.stringify(questions) → bare array
+      // Old format: stored as the full tool input → { questions: [...] }
+      const questions = Array.isArray(data) ? data : data?.questions;
+      if (Array.isArray(questions)) {
+        // Don't pre-set answers here — the tool-result matching in
+        // ext/session-opened will fill in the real answers if stored.
+        // After the loop, any unanswered questions get a fallback.
+        return { id: uid(), kind: "user-question", requestId: toolCallId, questions };
       }
     } catch { /* fall through to generic */ }
   }
@@ -236,15 +240,31 @@ export function appReducer(state: AppState, action: Action): AppState {
             items.push(toolCallToItem(m.toolName, m.text, m.toolCallId));
             break;
           case "tool-result": {
-            // Find the matching tool call and add the result
-            const tc = items.find(
-              (i) => i.kind === "tool-call" && i.toolCallId === m.toolCallId
+            // Find the matching tool call or user-question and attach the result
+            const match = items.find(
+              (i) =>
+                (i.kind === "tool-call" && i.toolCallId === m.toolCallId) ||
+                (i.kind === "user-question" && i.requestId === m.toolCallId)
             );
-            if (tc && tc.kind === "tool-call") {
-              tc.result = m.text;
+            if (match?.kind === "tool-call") {
+              match.result = m.text;
+            } else if (match?.kind === "user-question") {
+              try {
+                match.answers = JSON.parse(m.text);
+              } catch {
+                match.answers = { _restored: "true" };
+              }
             }
             break;
           }
+        }
+      }
+      // User-question items without a stored answer (old sessions before
+      // answer persistence was added) — mark as resolved so they render
+      // dimmed instead of showing interactive buttons.
+      for (const item of items) {
+        if (item.kind === "user-question" && !item.answers) {
+          item.answers = { _restored: "true" };
         }
       }
       return {
