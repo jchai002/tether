@@ -88,8 +88,17 @@ export interface PlanReviewItem {
   response?: string;
 }
 
+/** Compact summary — shown when the SDK compacts the conversation context.
+ *  Displays the summary text in a collapsible block so the user knows
+ *  what was preserved after compaction. */
+export interface CompactSummaryItem {
+  id: string;
+  kind: "compact-summary";
+  text: string;
+}
+
 /** Everything that can appear in the message list */
-export type MessageItem = ChatMessage | ToolCall | PermissionRequestItem | TodoListItem | UserQuestionItem | PlanReviewItem;
+export type MessageItem = ChatMessage | ToolCall | PermissionRequestItem | TodoListItem | UserQuestionItem | PlanReviewItem | CompactSummaryItem;
 
 /** The complete webview state — managed by useReducer in the Context provider */
 export interface AppState {
@@ -161,6 +170,7 @@ export type Action =
       contextWindow?: number; inputTokens?: number; outputTokens?: number;
       cacheReadTokens?: number; cacheCreationTokens?: number }
   | { type: "ext/sdk-error"; text: string }
+  | { type: "ext/sdk-compact-summary"; text: string }
   | { type: "ext/permission-request"; requestId: string; toolName: string; input: string; reason?: string }
   | { type: "ext/user-question"; requestId: string; questions: UserQuestionItem["questions"] }
   | { type: "ext/plan-review"; requestId: string; planText: string }

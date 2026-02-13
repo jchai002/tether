@@ -13,6 +13,7 @@ import { PermissionRequest } from "./PermissionRequest";
 import { TodoList } from "./TodoList";
 import { UserQuestion } from "./UserQuestion";
 import { PlanReview } from "./PlanReview";
+import { CompactSummary } from "./CompactSummary";
 
 export function MessageList() {
   const { state } = useExtensionState();
@@ -33,6 +34,8 @@ export function MessageList() {
             return <UserQuestion key={item.id} item={item} />;
           case "plan-review":
             return <PlanReview key={item.id} item={item} />;
+          case "compact-summary":
+            return <CompactSummary key={item.id} item={item} />;
         }
       })}
     </>

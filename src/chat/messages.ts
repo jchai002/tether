@@ -75,6 +75,8 @@ export type ExtensionToWebviewMessage =
       contextWindow?: number; inputTokens?: number; outputTokens?: number;
       cacheReadTokens?: number; cacheCreationTokens?: number }
   | { type: "sdk-error"; text: string }
+  // Compaction summary — shown when the SDK compacts the conversation context
+  | { type: "sdk-compact-summary"; text: string }
   // Permission prompt
   | { type: "permission-request"; requestId: string; toolName: string; input: string; reason?: string }
   // AskUserQuestion — Claude wants the user to pick from options or type custom text

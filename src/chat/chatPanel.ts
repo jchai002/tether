@@ -496,6 +496,9 @@ export class ChatPanel {
           }
         }
         break;
+      case "sdk-compact-summary":
+        this.messageBuffer.push({ role: "info", text: "[compact] " + msg.text.slice(0, 2000), timestamp: Date.now() });
+        break;
       case "sdk-error":
         this.messageBuffer.push({ role: "error", text: msg.text, timestamp: Date.now() });
         this.flushMessageBuffer();

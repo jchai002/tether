@@ -83,6 +83,9 @@ export function useExtensionMessage() {
         case "sdk-error":
           dispatch({ type: "ext/sdk-error", text: msg.text });
           break;
+        case "sdk-compact-summary":
+          dispatch({ type: "ext/sdk-compact-summary", text: msg.text });
+          break;
 
         // Setup
         case "setup-status":

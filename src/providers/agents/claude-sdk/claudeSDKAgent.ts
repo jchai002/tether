@@ -655,6 +655,13 @@ class SDKConversationImpl implements SDKConversation {
                   text: block.text,
                   messageId: msg.uuid ?? "",
                 });
+              } else if (block.type === "compaction") {
+                // Compaction summary — the SDK compacted the conversation context
+                // and produced a summary. Show it as a distinct UI block.
+                const summary = typeof block.content === "string" ? block.content : "";
+                if (summary) {
+                  this.onMessage({ type: "sdk-compact-summary", text: summary });
+                }
               } else if (block.type === "tool_use") {
                 // Tools with custom UI or suppressed output — never emit as
                 // generic sdk-tool-call (they have their own messages).

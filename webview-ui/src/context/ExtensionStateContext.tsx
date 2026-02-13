@@ -136,6 +136,7 @@ export function appReducer(state: AppState, action: Action): AppState {
         ...state,
         showWelcome: false,
         inConversation: true,
+        statusText: "", // Clear compaction or other status — Claude is responding
         messages: [...state.messages, chatMsg("assistant", action.text)],
       };
 
@@ -144,6 +145,7 @@ export function appReducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         showWelcome: false,
+        statusText: "", // Clear compaction or other status — Claude is responding
         messages: [...state.messages, item],
       };
     }
@@ -171,6 +173,16 @@ export function appReducer(state: AppState, action: Action): AppState {
           cacheReadTokens: action.cacheReadTokens ?? 0,
           cacheCreationTokens: action.cacheCreationTokens ?? 0,
         } : state.contextUsage,
+      };
+
+    case "ext/sdk-compact-summary":
+      return {
+        ...state,
+        showWelcome: false,
+        statusText: "", // Clear "Compacting context..." — compaction is done
+        messages: [...state.messages, {
+          id: uid(), kind: "compact-summary" as const, text: action.text,
+        }],
       };
 
     case "ext/sdk-error":

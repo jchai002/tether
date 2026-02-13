@@ -392,6 +392,20 @@ body {
   font-size: 12px;
 }
 
+/* Compact summary — shown when the SDK compacts conversation context */
+.message.compact-summary {
+  border-left-color: var(--vscode-terminal-ansiBlue, #61afef);
+}
+
+.message.compact-summary .message-label {
+  color: var(--vscode-terminal-ansiBlue, #61afef);
+}
+
+.message.compact-summary .message-content {
+  opacity: 0.8;
+  font-size: 12px;
+}
+
 #status {
   padding: 2px 20px;
   font-size: 11px;
