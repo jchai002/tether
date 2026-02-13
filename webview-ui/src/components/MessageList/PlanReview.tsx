@@ -2,11 +2,10 @@
  * Thin wrapper that converts a PlanReviewItem (from ExitPlanMode) into
  * generic UserResponsePanel props.
  *
- * Offers 4 choices:
- *   1. Accept & auto-approve edits — proceeds with acceptEdits permission mode
- *   2. Accept & review edits — proceeds with default (ask) permission mode
- *   3. Continue planning — tells Claude to keep refining the plan
- *   4. Other — free-text feedback for the user to explain what to change
+ * Offers 3 choices:
+ *   1. Accept — proceeds with the current global permission mode
+ *   2. Continue planning — tells Claude to keep refining the plan
+ *   3. Other — free-text feedback for the user to explain what to change
  *
  * The plan text is rendered as content between the label and the options.
  */
@@ -20,11 +19,10 @@ interface PlanReviewProps {
 }
 
 /** Map the user's option label to the action string sent to the extension.
- *  "accept-auto" and "accept-manual" trigger permission mode changes,
+ *  "accept" proceeds with the current permission mode,
  *  "continue" tells Claude to keep planning, anything else is custom feedback. */
 const OPTION_TO_ACTION: Record<string, string> = {
-  "Accept & auto-approve edits": "accept-auto",
-  "Accept & review edits": "accept-manual",
+  "Accept": "accept",
   "Continue planning": "continue",
 };
 
@@ -34,8 +32,7 @@ export function PlanReview({ item }: PlanReviewProps) {
 
   /** Convert the response string back to a display label for resolved state */
   function responseLabel(response: string): string {
-    if (response === "accept-auto") return "Accepted (auto-approve edits)";
-    if (response === "accept-manual") return "Accepted (review edits)";
+    if (response === "accept") return "Accepted";
     if (response === "continue") return "Continue planning";
     if (response === "_restored") return "(answered)";
     return response; // custom feedback text
@@ -49,8 +46,7 @@ export function PlanReview({ item }: PlanReviewProps) {
         header: "Action",
         text: "Claude has finished planning. How would you like to proceed?",
         options: [
-          { label: "Accept & auto-approve edits", description: "Start implementing — auto-approve file edits" },
-          { label: "Accept & review edits", description: "Start implementing — ask before each edit" },
+          { label: "Accept", description: "Start implementing with the current permission mode" },
           { label: "Continue planning", description: "Tell Claude to keep refining the plan" },
         ],
       }]}

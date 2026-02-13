@@ -83,8 +83,8 @@ export interface PlanReviewItem {
   requestId: string;
   /** The plan text from ExitPlanMode (markdown) */
   planText: string;
-  /** Set when the user makes a choice (e.g., "accept-auto", "accept-manual",
-   *  "continue", or custom feedback text). */
+  /** Set when the user makes a choice (e.g., "accept", "continue",
+   *  or custom feedback text). */
   response?: string;
 }
 

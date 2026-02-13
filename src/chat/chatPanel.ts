@@ -181,15 +181,6 @@ export class ChatPanel {
           toolCallId: msg.requestId,
           timestamp: Date.now(),
         });
-        // If user chose auto-approve or manual-approve, sync the permission
-        // mode to the webview so the toggle updates.
-        if (msg.action === "accept-auto") {
-          this.permissionMode = "acceptEdits";
-          this.post({ type: "permission-mode", mode: "acceptEdits" });
-        } else if (msg.action === "accept-manual") {
-          this.permissionMode = "default";
-          this.post({ type: "permission-mode", mode: "default" });
-        }
         break;
       case "set-permission-mode":
         this.permissionMode = msg.mode;

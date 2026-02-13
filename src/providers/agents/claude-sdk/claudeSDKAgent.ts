@@ -435,18 +435,14 @@ class SDKConversationImpl implements SDKConversation {
   }
 
   /** Resolves a plan review prompt based on the user's chosen action.
-   *  "accept-auto" / "accept-manual" → allow (+ update permission mode),
+   *  "accept" → allow (uses whatever permission mode the user has set globally),
    *  "continue" → deny (keep planning), custom text → deny with feedback. */
   handlePlanReviewResponse(requestId: string, action: string): void {
     const entry = this.pendingPermissions.get(requestId);
     if (!entry) return;
     this.pendingPermissions.delete(requestId);
 
-    if (action === "accept-auto") {
-      this.setPermissionMode("acceptEdits");
-      entry.resolve({ behavior: "allow", updatedInput: entry.input, toolUseID: entry.toolUseID });
-    } else if (action === "accept-manual") {
-      this.setPermissionMode("default");
+    if (action === "accept") {
       entry.resolve({ behavior: "allow", updatedInput: entry.input, toolUseID: entry.toolUseID });
     } else if (action === "continue") {
       entry.resolve({ behavior: "deny", message: "Continue refining the plan before proceeding.", toolUseID: entry.toolUseID });
