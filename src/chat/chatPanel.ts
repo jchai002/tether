@@ -133,12 +133,10 @@ export class ChatPanel {
         // The webview's React app is mounted and listening for messages.
         // Send initial state that was deferred until we know it won't be dropped.
         this.post({ type: "permission-mode", mode: this.permissionMode });
-        // Check if Claude CLI is ready before restoring the session.
-        // The webview uses setupStatus to decide whether to show the setup
-        // screen or the normal chat experience.
-        await this.checkSetupStatus();
-        await this.checkSlackConnection();
+       
         this.restoreMostRecentSession();
+        this.checkSetupStatus();
+        this.checkSlackConnection();
         break;
       case "query":
         await this.handleQuery(msg.text);
