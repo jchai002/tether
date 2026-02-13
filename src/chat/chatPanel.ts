@@ -477,7 +477,7 @@ export class ChatPanel {
       case "plan-review":
         // Persist ExitPlanMode as a tool-call so it shows in session history
         this.messageBuffer.push({
-          role: "tool-call", text: msg.planText.slice(0, 2000),
+          role: "tool-call", text: msg.planText,
           toolName: "ExitPlanMode", toolCallId: msg.requestId, timestamp: Date.now(),
         });
         break;
