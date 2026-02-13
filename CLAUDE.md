@@ -63,6 +63,7 @@ src/
 - VS Code command namespace: `businessContext.*`
 - Provider-specific settings nest under provider name: `businessContext.slack.*`, `businessContext.claude.*`
 - **Comment new code for a junior-to-mid level audience.** This codebase spans AI integration (MCP, Claude SDK), VS Code extension APIs, and webview messaging — domains that are unfamiliar to most developers. Every new file should have a file-level comment explaining what it does and how it fits into the architecture. Non-obvious functions should have a brief JSDoc explaining *why* they exist, not just *what* they do. Inline comments for Code patterns that aren't self-explanatory.
+- **Reuse shared UI components.** Before creating new webview components, check for existing shared components that can be extended (e.g., `DiffBlock` for diffs, `UserResponsePanel` for interactive option cards, `ToolInputPreview` for structured tool input rendering). Prefer adding props to an existing component over duplicating rendering logic.
 
 ## Key Context
 
