@@ -37,6 +37,7 @@ export function PermissionRequest({ item }: PermissionRequestProps) {
           ? { Action: item.resolved === "allow" ? "Allowed" : "Denied" }
           : undefined
       }
+      onCancel={() => post({ type: "cancel" })}
       onSubmit={(answers) => {
         const behavior = answers.Action === "Allow" ? "allow" as const : "deny" as const;
         dispatch({ type: "ui/resolve-permission", requestId: item.requestId, behavior });

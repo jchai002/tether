@@ -39,6 +39,8 @@ export type WebviewToExtensionMessage =
   | { type: "permission-response"; requestId: string; behavior: "allow" | "deny" }
   // AskUserQuestion — user selected options or typed custom text
   | { type: "user-question-response"; requestId: string; answers: Record<string, string> }
+  // Plan review — user accepted, rejected, or gave feedback on a plan
+  | { type: "plan-review-response"; requestId: string; action: string }
   | { type: "set-permission-mode"; mode: PermissionModeValue }
   // Setup detection — user clicked "Check Again" or "Open Terminal" on setup screen
   | { type: "check-setup" }
@@ -75,6 +77,8 @@ export type ExtensionToWebviewMessage =
   | { type: "permission-request"; requestId: string; toolName: string; input: string; reason?: string }
   // AskUserQuestion — Claude wants the user to pick from options or type custom text
   | { type: "user-question"; requestId: string; questions: UserQuestionData[] }
+  // Plan review — Claude finished planning and wants user to accept/reject/give feedback
+  | { type: "plan-review"; requestId: string; planText: string }
   // Permission mode sync
   | { type: "permission-mode"; mode: PermissionModeValue }
   // Setup status — sent on webview-ready and when user clicks "Check Again".

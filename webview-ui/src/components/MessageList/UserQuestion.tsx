@@ -30,6 +30,7 @@ export function UserQuestion({ item }: UserQuestionProps) {
       }))}
       allowCustom
       resolvedAnswers={item.answers}
+      onCancel={() => post({ type: "cancel" })}
       onSubmit={(answers) => {
         dispatch({ type: "ui/answer-question", requestId: item.requestId, answers });
         post({ type: "user-question-response", requestId: item.requestId, answers });

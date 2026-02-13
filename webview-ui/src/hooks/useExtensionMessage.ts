@@ -113,6 +113,13 @@ export function useExtensionMessage() {
             questions: msg.questions,
           });
           break;
+        case "plan-review":
+          dispatch({
+            type: "ext/plan-review",
+            requestId: msg.requestId,
+            planText: msg.planText,
+          });
+          break;
         case "permission-mode":
           dispatch({ type: "ext/permission-mode", mode: msg.mode });
           break;

@@ -12,6 +12,7 @@ import { ToolCallMessage } from "./ToolCallMessage";
 import { PermissionRequest } from "./PermissionRequest";
 import { TodoList } from "./TodoList";
 import { UserQuestion } from "./UserQuestion";
+import { PlanReview } from "./PlanReview";
 
 export function MessageList() {
   const { state } = useExtensionState();
@@ -30,6 +31,8 @@ export function MessageList() {
             return <TodoList key={item.id} item={item} />;
           case "user-question":
             return <UserQuestion key={item.id} item={item} />;
+          case "plan-review":
+            return <PlanReview key={item.id} item={item} />;
         }
       })}
     </>

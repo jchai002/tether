@@ -21,7 +21,7 @@
  *   - Multi-select or multiple questions → shows a Submit button
  *   - After answering → dims the block and shows the selected answer
  */
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 
 interface ResponseOption {
   label: string;
@@ -48,6 +48,9 @@ export interface UserResponsePanelProps {
   resolvedAnswers?: Record<string, string>;
   /** Called when the user submits their selection */
   onSubmit: (answers: Record<string, string>) => void;
+  /** Called when the user presses ESC — cancels the pending request.
+   *  If provided, a subtle "Press ESC to cancel" hint is shown at the bottom. */
+  onCancel?: () => void;
   /** Optional content rendered between the label and the question sections
    *  (e.g., tool input for permission requests, plan diff for plan mode) */
   children?: ReactNode;
@@ -60,6 +63,7 @@ export function UserResponsePanel({
   allowCustom = false,
   resolvedAnswers,
   onSubmit,
+  onCancel,
   children,
 }: UserResponsePanelProps) {
   // Track selected options per question (keyed by header)
@@ -68,6 +72,19 @@ export function UserResponsePanel({
   const [customTexts, setCustomTexts] = useState<Record<string, string>>({});
   // Track which questions have the "Other" input open
   const [showCustom, setShowCustom] = useState<Record<string, boolean>>({});
+
+  // ESC key cancels the pending request (sends "cancel" like the stop button).
+  // Only active when onCancel is provided and not yet resolved.
+  useEffect(() => {
+    if (!onCancel || resolvedAnswers) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        onCancel!();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [onCancel, resolvedAnswers]);
 
   // Single question + single select = auto-submit on click
   const isAutoSubmit = questions.length === 1 && !questions[0]?.multiSelect;
@@ -222,6 +239,11 @@ export function UserResponsePanel({
         >
           Submit
         </button>
+      )}
+
+      {/* Subtle ESC hint — only when onCancel is provided */}
+      {onCancel && (
+        <div className="response-cancel-hint">Press ESC to cancel</div>
       )}
     </div>
   );

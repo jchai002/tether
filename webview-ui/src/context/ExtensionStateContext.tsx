@@ -21,6 +21,7 @@ import type {
   ChatMessage,
   PermissionRequestItem,
   UserQuestionItem,
+  PlanReviewItem,
 } from "./types";
 import { initialState } from "./types";
 import type { WebviewToExtensionMessage } from "../types";
@@ -51,6 +52,10 @@ function toolCallToItem(toolName: string, input: string, toolCallId: string): Me
         return { id: uid(), kind: "todo-list", toolCallId, todos: data.todos };
       }
     } catch { /* fall through to generic */ }
+  }
+  if (toolName === "ExitPlanMode") {
+    // Plan review — stored with planText as the text field
+    return { id: uid(), kind: "plan-review", requestId: toolCallId, planText: input };
   }
   if (toolName === "AskUserQuestion") {
     try {
@@ -197,6 +202,20 @@ export function appReducer(state: AppState, action: Action): AppState {
       };
     }
 
+    case "ext/plan-review": {
+      const plan: PlanReviewItem = {
+        id: uid(),
+        kind: "plan-review",
+        requestId: action.requestId,
+        planText: action.planText,
+      };
+      return {
+        ...state,
+        showWelcome: false,
+        messages: [...state.messages, plan],
+      };
+    }
+
     case "ext/permission-mode":
       return { ...state, permissionMode: action.mode };
 
@@ -240,11 +259,12 @@ export function appReducer(state: AppState, action: Action): AppState {
             items.push(toolCallToItem(m.toolName, m.text, m.toolCallId));
             break;
           case "tool-result": {
-            // Find the matching tool call or user-question and attach the result
+            // Find the matching tool call, user-question, or plan-review and attach the result
             const match = items.find(
               (i) =>
                 (i.kind === "tool-call" && i.toolCallId === m.toolCallId) ||
-                (i.kind === "user-question" && i.requestId === m.toolCallId)
+                (i.kind === "user-question" && i.requestId === m.toolCallId) ||
+                (i.kind === "plan-review" && i.requestId === m.toolCallId)
             );
             if (match?.kind === "tool-call") {
               match.result = m.text;
@@ -254,17 +274,21 @@ export function appReducer(state: AppState, action: Action): AppState {
               } catch {
                 match.answers = { _restored: "true" };
               }
+            } else if (match?.kind === "plan-review") {
+              match.response = m.text;
             }
             break;
           }
         }
       }
-      // User-question items without a stored answer (old sessions before
-      // answer persistence was added) — mark as resolved so they render
-      // dimmed instead of showing interactive buttons.
+      // Items without stored answers (old sessions before persistence) —
+      // mark as resolved so they render dimmed instead of showing buttons.
       for (const item of items) {
         if (item.kind === "user-question" && !item.answers) {
           item.answers = { _restored: "true" };
+        }
+        if (item.kind === "plan-review" && !item.response) {
+          item.response = "_restored";
         }
       }
       return {
@@ -326,6 +350,16 @@ export function appReducer(state: AppState, action: Action): AppState {
         return item;
       });
       return { ...state, messages: answered };
+    }
+
+    case "ui/plan-response": {
+      const planResolved = state.messages.map((item) => {
+        if (item.kind === "plan-review" && item.requestId === action.requestId) {
+          return { ...item, response: action.response };
+        }
+        return item;
+      });
+      return { ...state, messages: planResolved };
     }
 
     default:

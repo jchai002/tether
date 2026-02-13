@@ -172,6 +172,25 @@ export class ChatPanel {
           timestamp: Date.now(),
         });
         break;
+      case "plan-review-response":
+        this.sdkConversation?.handlePlanReviewResponse(msg.requestId, msg.action);
+        // Persist the user's choice so it survives session restoration.
+        this.messageBuffer.push({
+          role: "tool-result",
+          text: msg.action.slice(0, 2000),
+          toolCallId: msg.requestId,
+          timestamp: Date.now(),
+        });
+        // If user chose auto-approve or manual-approve, sync the permission
+        // mode to the webview so the toggle updates.
+        if (msg.action === "accept-auto") {
+          this.permissionMode = "acceptEdits";
+          this.post({ type: "permission-mode", mode: "acceptEdits" });
+        } else if (msg.action === "accept-manual") {
+          this.permissionMode = "default";
+          this.post({ type: "permission-mode", mode: "default" });
+        }
+        break;
       case "set-permission-mode":
         this.permissionMode = msg.mode;
         // Update the active conversation so the next query uses the new mode
@@ -462,6 +481,13 @@ export class ChatPanel {
         this.messageBuffer.push({
           role: "tool-call", text: JSON.stringify(msg.questions).slice(0, 2000),
           toolName: "AskUserQuestion", toolCallId: msg.requestId, timestamp: Date.now(),
+        });
+        break;
+      case "plan-review":
+        // Persist ExitPlanMode as a tool-call so it shows in session history
+        this.messageBuffer.push({
+          role: "tool-call", text: msg.planText.slice(0, 2000),
+          toolName: "ExitPlanMode", toolCallId: msg.requestId, timestamp: Date.now(),
         });
         break;
       case "sdk-tool-result":

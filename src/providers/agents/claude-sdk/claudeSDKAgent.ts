@@ -135,6 +135,8 @@ export interface SDKConversation {
   /** Updates the permission mode for subsequent queries. Called when the user
    *  toggles the permission mode in the UI mid-conversation. */
   setPermissionMode(mode: "default" | "acceptEdits" | "bypassPermissions"): void;
+  /** Called when the user responds to a plan review (accept/reject/feedback). */
+  handlePlanReviewResponse(requestId: string, action: string): void;
   readonly isRunning: boolean;
   /** The SDK-assigned session ID. Null until the first response arrives. */
   readonly sessionId: string | null;
@@ -432,6 +434,28 @@ class SDKConversationImpl implements SDKConversation {
     this.options = { ...this.options, permissionMode: mode };
   }
 
+  /** Resolves a plan review prompt based on the user's chosen action.
+   *  "accept-auto" / "accept-manual" → allow (+ update permission mode),
+   *  "continue" → deny (keep planning), custom text → deny with feedback. */
+  handlePlanReviewResponse(requestId: string, action: string): void {
+    const entry = this.pendingPermissions.get(requestId);
+    if (!entry) return;
+    this.pendingPermissions.delete(requestId);
+
+    if (action === "accept-auto") {
+      this.setPermissionMode("acceptEdits");
+      entry.resolve({ behavior: "allow", updatedInput: entry.input, toolUseID: entry.toolUseID });
+    } else if (action === "accept-manual") {
+      this.setPermissionMode("default");
+      entry.resolve({ behavior: "allow", updatedInput: entry.input, toolUseID: entry.toolUseID });
+    } else if (action === "continue") {
+      entry.resolve({ behavior: "deny", message: "Continue refining the plan before proceeding.", toolUseID: entry.toolUseID });
+    } else {
+      // Custom feedback text from the user
+      entry.resolve({ behavior: "deny", message: action, toolUseID: entry.toolUseID });
+    }
+  }
+
   /**
    * Core method — sends a message to Claude and streams back the response.
    *
@@ -501,6 +525,24 @@ class SDKConversationImpl implements SDKConversation {
                   // the webview instead of the generic Allow/Deny permission prompt.
                   // The user's selections are injected back into the tool input via
                   // `updatedInput.answers`, then the SDK executes the tool normally.
+                  // ExitPlanMode: render a plan review UI with accept/reject/feedback
+                  // options instead of the generic Allow/Deny permission prompt.
+                  if (toolName === "ExitPlanMode") {
+                    const requestId = `plan_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                    const planText = typeof input.plan === "string" ? input.plan : "";
+                    this.onMessage({ type: "plan-review", requestId, planText });
+                    const toolUseID = options.toolUseID;
+                    return new Promise((resolve) => {
+                      this.pendingPermissions.set(requestId, { toolUseID, input, resolve });
+                      setTimeout(() => {
+                        if (this.pendingPermissions.has(requestId)) {
+                          this.pendingPermissions.delete(requestId);
+                          resolve({ behavior: "deny", message: "Plan review timed out", toolUseID });
+                        }
+                      }, 5 * 60 * 1000);
+                    });
+                  }
+
                   if (toolName === "AskUserQuestion") {
                     const requestId = `ask_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
                     const questions = Array.isArray(input.questions) ? input.questions : [];
@@ -604,6 +646,7 @@ class SDKConversationImpl implements SDKConversation {
                 // it gets its own interactive UI via the "user-question" message
                 // sent from canUseTool below.
                 if (block.name === "AskUserQuestion") break;
+                if (block.name === "ExitPlanMode") break;
 
                 // Skip Task tool calls — subagents produce their own streamed
                 // output (sdk-text, sdk-tool-call, etc.), so the outer Task

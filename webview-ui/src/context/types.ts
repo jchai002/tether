@@ -74,8 +74,22 @@ export interface UserQuestionItem {
   answers?: Record<string, string>;
 }
 
+/** A plan review prompt — Claude finished planning and wants user to
+ *  accept (with auto or manual approval), continue planning, or provide
+ *  custom feedback. Rendered as option cards via UserResponsePanel. */
+export interface PlanReviewItem {
+  id: string;
+  kind: "plan-review";
+  requestId: string;
+  /** The plan text from ExitPlanMode (markdown) */
+  planText: string;
+  /** Set when the user makes a choice (e.g., "accept-auto", "accept-manual",
+   *  "continue", or custom feedback text). */
+  response?: string;
+}
+
 /** Everything that can appear in the message list */
-export type MessageItem = ChatMessage | ToolCall | PermissionRequestItem | TodoListItem | UserQuestionItem;
+export type MessageItem = ChatMessage | ToolCall | PermissionRequestItem | TodoListItem | UserQuestionItem | PlanReviewItem;
 
 /** The complete webview state — managed by useReducer in the Context provider */
 export interface AppState {
@@ -133,6 +147,7 @@ export type Action =
   | { type: "ext/sdk-error"; text: string }
   | { type: "ext/permission-request"; requestId: string; toolName: string; input: string; reason?: string }
   | { type: "ext/user-question"; requestId: string; questions: UserQuestionItem["questions"] }
+  | { type: "ext/plan-review"; requestId: string; planText: string }
   | { type: "ext/permission-mode"; mode: PermissionModeValue }
   | { type: "ext/setup-status"; cliInstalled: boolean; cliAuthenticated: boolean }
   | { type: "ext/slack-status"; connected: boolean; workspaceName?: string }
@@ -152,4 +167,5 @@ export type Action =
   | { type: "ui/toggle-session-list" }
   | { type: "ui/hide-session-list" }
   | { type: "ui/resolve-permission"; requestId: string; behavior: "allow" | "deny" }
-  | { type: "ui/answer-question"; requestId: string; answers: Record<string, string> };
+  | { type: "ui/answer-question"; requestId: string; answers: Record<string, string> }
+  | { type: "ui/plan-response"; requestId: string; response: string };
