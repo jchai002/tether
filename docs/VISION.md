@@ -53,10 +53,10 @@ The most impactful contributions are **new providers**. Each one makes the tool 
 - GitHub Issues / Discussions
 
 **Coding Agent adapters needed:**
-- GitHub Copilot CLI
-- Cursor
-- Aider
-- Continue
+- OpenAI Codex (next in line — see [Multi-Agent Strategy](#multi-agent-strategy) below)
+- GitHub Copilot SDK (once it exits technical preview)
+- Continue.dev CLI
+- Cline / Roo Code
 
 See [CONTRIBUTING.md](../CONTRIBUTING.md) for a step-by-step guide. Adding a provider touches exactly 3 files.
 
@@ -83,7 +83,7 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for a step-by-step guide. Adding a pro
 - [ ] Microsoft Teams context provider (Graph API)
 - [ ] Jira context provider (Atlassian REST API)
 - [ ] Outlook/email context provider (Graph API)
-- [ ] GitHub Copilot coding agent
+- [ ] OpenAI Codex coding agent (SDK path — see [Multi-Agent Strategy](#multi-agent-strategy))
 - [ ] Setup wizard (quick onboarding: select providers, paste API keys)
 
 ### Phase 3: Multi-Provider Context
@@ -99,11 +99,32 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for a step-by-step guide. Adding a pro
 - [ ] Issue templates for new provider requests
 - [ ] Community-contributed providers (Discord, Linear, Notion, GitHub Issues)
 
+## Multi-Agent Strategy
+
+Conduit currently wraps the Claude Agent SDK as its primary coding agent. The SDK path (subprocess streaming, MCP tools, approval callbacks, session resume) is tightly coupled to Claude — but the coupling is contained within `providers/agents/claude-sdk/` and the `sdk-*` message types. Adding a second agent means extracting an abstract `ConversationAgent` interface and creating a parallel adapter.
+
+### Next target: OpenAI Codex SDK
+
+OpenAI's Codex SDK (`@openai/codex-sdk`, Apache 2.0) is architecturally the closest match to what Conduit already does with Claude. It spawns the Codex CLI as a subprocess, exchanges structured JSONL events, supports thread resume by ID, has `canAutoApprove`/`getCommandConfirmation` approval callbacks, and has first-class MCP support. A `providers/agents/codex/` adapter would follow the same patterns as `providers/agents/claude-sdk/`.
+
+### Partially compatible targets
+
+These agents have some of the pieces but are missing critical integration features:
+
+- **GitHub Copilot SDK** (`@github/copilot-sdk`, MIT) — Streaming, approval callbacks, MCP support. Multi-language (TS, Python, Go, .NET). Currently in technical preview (Jan 2026) — API may change before GA. Strong candidate once stable.
+- **OpenHands** (`openhands-ai`, MIT) — Full-featured Python SDK with event-sourced state, MCP + OAuth, permission policies, session replay. Production-ready (#1 on SWE-Bench). Catch: Python-only, so Conduit would need a subprocess bridge.
+- **Continue.dev** (`@continuedev/cli`, Apache 2.0) — CLI with headless mode, full MCP, session resume. But no programmatic approval callback — headless mode excludes tools requiring approval entirely.
+- **Cline / Roo Code** (Apache 2.0) — CLI with MCP support, but no structured event stream (output is human-readable text) and no programmatic approval callbacks. Roo Code has a REST API and can act as an MCP server, which is unique.
+
+### Not viable for SDK-style integration
+
+Cursor, Windsurf, and Devin are proprietary/closed with no embeddable SDK. Aider has no official SDK (scripting API is "explicitly unsupported"), no MCP, and no session resume. Amazon Q and Sourcegraph Cody lack programmatic streaming APIs for external use.
+
 ## Key Decisions
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Agent architecture | Two paths: SDK (conversational MCP) + CodingAgent (one-shot pipeline) | SDK path for MCP-capable tools (Claude), pipeline path for others (Copilot, Cursor) |
+| Agent architecture | Two paths: SDK (conversational MCP) + CodingAgent (one-shot pipeline) | SDK path for MCP-capable tools (Claude, Codex), pipeline path for simpler agents |
 | MCP integration | In-process via `createSdkMcpServer()` | No separate stdio server needed; tools wrap ContextProvider directly |
 | Session management | SDK V1 `query()` with `resume` | SDK manages conversation history internally; supports multi-turn follow-ups |
 | Auth approach | CLI subprocess (user's subscription) | No per-token costs, users keep their existing AI subscriptions |
