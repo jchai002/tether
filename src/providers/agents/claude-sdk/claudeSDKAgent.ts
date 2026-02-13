@@ -591,6 +591,11 @@ class SDKConversationImpl implements SDKConversation {
                   messageId: msg.uuid ?? "",
                 });
               } else if (block.type === "tool_use") {
+                // Skip rendering AskUserQuestion as a generic tool call —
+                // it gets its own interactive UI via the "user-question" message
+                // sent from canUseTool below.
+                if (block.name === "AskUserQuestion") break;
+
                 this.onMessage({
                   type: "sdk-tool-call",
                   toolName: block.name,
