@@ -191,6 +191,26 @@ export class SlackProvider implements BusinessContextProvider {
   }
 
   /**
+   * Gets the OAuth redirect URI. Uses the HTTPS proxy URL if configured
+   * (required by Slack — they don't accept vscode:// URIs). The proxy
+   * receives the OAuth callback from Slack, then redirects the browser
+   * to vscode://jerrychaitea.conduit/slack-callback?code=...&state=...
+   * which VS Code's URI handler catches.
+   */
+  private getOAuthRedirectUri(): string {
+    const config = vscode.workspace.getConfiguration("businessContext.slack");
+    const proxyUrl = config.get<string>("oauthProxyUrl");
+    if (!proxyUrl) {
+      throw new Error(
+        "OAuth proxy URL not configured. Set businessContext.slack.oauthProxyUrl in settings. " +
+        "See docs/SLACK_SETUP.md for instructions."
+      );
+    }
+    // Normalize: strip trailing slash, append /slack-callback
+    return `${proxyUrl.replace(/\/+$/, "")}/slack-callback`;
+  }
+
+  /**
    * Initiates Slack OAuth flow by opening browser to authorization URL.
    * Generates a random state nonce for CSRF protection.
    */
@@ -202,17 +222,24 @@ export class SlackProvider implements BusinessContextProvider {
       throw new Error("Slack client ID not configured. Set businessContext.slack.clientId in settings.");
     }
 
+    const redirectUri = this.getOAuthRedirectUri();
+
     // Generate random state nonce for CSRF protection
     const state = crypto.randomBytes(32).toString("hex");
     await context.globalState.update("slack-oauth-state", state);
 
-    const redirectUri = "vscode://jerrychaitea.conduit/slack-callback";
-    const scopes = "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read";
+    // Bot scopes: reading channel info and message history
+    const botScopes = "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read";
+    // User scope: search.messages requires a user token (xoxp-), NOT a bot token.
+    // Slack's search API only works with user tokens because search results
+    // reflect the user's access level (including private channels and DMs).
+    const userScopes = "search:read";
 
     const authUrl = `https://slack.com/oauth/v2/authorize?${new URLSearchParams({
       client_id: clientId,
       redirect_uri: redirectUri,
-      scope: scopes,
+      scope: botScopes,
+      user_scope: userScopes,
       state,
     })}`;
 
@@ -220,8 +247,9 @@ export class SlackProvider implements BusinessContextProvider {
   }
 
   /**
-   * Exchanges OAuth authorization code for bot token.
-   * Stores token in SecretStorage (encrypted) and clears the state nonce.
+   * Exchanges OAuth authorization code for tokens.
+   * Slack returns both a bot token (xoxb-) and a user token (xoxp-).
+   * We store the user token because search.messages requires it.
    */
   async handleOAuthCallback(code: string): Promise<void> {
     const config = vscode.workspace.getConfiguration("businessContext.slack");
@@ -232,7 +260,8 @@ export class SlackProvider implements BusinessContextProvider {
       throw new Error("Slack OAuth credentials not configured");
     }
 
-    const redirectUri = "vscode://jerrychaitea.conduit/slack-callback";
+    // Must match the redirect_uri used in initiateOAuth — Slack validates this
+    const redirectUri = this.getOAuthRedirectUri();
 
     // Exchange code for token
     const response = await fetch("https://slack.com/api/oauth.v2.access", {
@@ -252,8 +281,14 @@ export class SlackProvider implements BusinessContextProvider {
       throw new Error(data.error || "OAuth token exchange failed");
     }
 
-    // Store bot token in SecretStorage (encrypted)
-    await this.context.secrets.store("slack-bot-token", data.access_token);
+    // Store the user token (xoxp-) for search.messages API.
+    // The user token is in authed_user.access_token, NOT data.access_token
+    // (which is the bot token). search.messages only works with user tokens.
+    const userToken = data.authed_user?.access_token;
+    if (!userToken) {
+      throw new Error("No user token returned. Make sure search:read is in user_scope.");
+    }
+    await this.context.secrets.store("slack-user-token", userToken);
 
     // Store workspace name for UI display
     await this.context.globalState.update("slack-workspace-name", data.team?.name);
@@ -269,7 +304,7 @@ export class SlackProvider implements BusinessContextProvider {
    * Checks if Slack is connected (bot token exists in SecretStorage).
    */
   async isConnected(): Promise<boolean> {
-    const token = await this.context.secrets.get("slack-bot-token");
+    const token = await this.context.secrets.get("slack-user-token");
     return !!token;
   }
 
@@ -288,7 +323,7 @@ export class SlackProvider implements BusinessContextProvider {
    * Disconnects by clearing token and workspace name.
    */
   async disconnect(): Promise<void> {
-    await this.context.secrets.delete("slack-bot-token");
+    await this.context.secrets.delete("slack-user-token");
     await this.context.globalState.update("slack-workspace-name", undefined);
     this.client = null;
   }
@@ -297,7 +332,7 @@ export class SlackProvider implements BusinessContextProvider {
 
   private async getToken(): Promise<string | undefined> {
     // Try SecretStorage first (OAuth token)
-    const oauthToken = await this.context.secrets.get("slack-bot-token");
+    const oauthToken = await this.context.secrets.get("slack-user-token");
     if (oauthToken) return oauthToken;
 
     // Fallback to manual token in settings (legacy support)

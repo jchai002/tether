@@ -92,6 +92,12 @@
           "description": "Slack app client secret for OAuth (get from api.slack.com/apps).",
           "order": 12
         },
+        "businessContext.slack.oauthProxyUrl": {
+          "type": "string",
+          "default": "",
+          "description": "HTTPS proxy URL for Slack OAuth redirect (e.g. https://your-proxy.workers.dev). The proxy receives the OAuth callback and redirects to VS Code.",
+          "order": 13
+        },
         "businessContext.claude.yoloMode": {
           "type": "boolean",
           "default": false,

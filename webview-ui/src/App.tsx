@@ -17,6 +17,7 @@ import { useAutoScroll } from "./hooks/useAutoScroll";
 import { Header } from "./components/Header";
 import { SetupScreen } from "./components/SetupScreen";
 import { WelcomeScreen } from "./components/WelcomeScreen";
+import { ProviderConnection } from "./components/ProviderConnection";
 import { StatusBar } from "./components/StatusBar";
 import { SessionList } from "./components/SessionList/SessionList";
 import { MessageList } from "./components/MessageList/MessageList";
@@ -51,6 +52,7 @@ function AppContent() {
   return (
     <>
       <Header />
+      {!setupNeeded && <ProviderConnection />}
       {state.showSessionList && <SessionList />}
       <div id="messages" ref={scrollRef}>
         {setupNeeded ? (

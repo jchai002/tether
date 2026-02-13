@@ -626,19 +626,21 @@ export class ChatPanel {
     this.post({ type: "setup-status", cliInstalled, cliAuthenticated });
   }
 
-  /** Checks if an error or message text looks like an authentication failure.
-   *  Accepts either an Error object or a plain string (for streamed sdk-error text).
+  /** Checks if an error or message text looks like a Claude CLI authentication
+   *  failure. Accepts either an Error object or a plain string.
    *  Used as a runtime fallback (Tier 2) — if credentials expire between the
    *  initial setup check and an actual query, we catch it here and show the
-   *  setup screen instead of a cryptic error. */
+   *  setup screen instead of a cryptic error.
+   *
+   *  IMPORTANT: These patterns must be specific to Claude CLI auth errors.
+   *  Generic words like "authentication" or "unauthorized" match Slack API
+   *  errors too, which would falsely kick users to the setup screen. */
   private isAuthError(errOrText: any): boolean {
     const msg = (typeof errOrText === "string" ? errOrText : errOrText?.message || "").toLowerCase();
     return (
       msg.includes("not logged in") ||
       msg.includes("/login") ||
-      msg.includes("authentication") ||
-      msg.includes("unauthorized") ||
-      msg.includes("unauthenticated")
+      msg.includes("please run claude login")
     );
   }
 
