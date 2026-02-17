@@ -33,7 +33,6 @@ export interface UserQuestionData {
 export type WebviewToExtensionMessage =
   | { type: "webview-ready" }
   | { type: "query"; text: string }
-  | { type: "search"; text: string }
   | { type: "followup"; text: string }
   | { type: "cancel" }
   | { type: "permission-response"; requestId: string; behavior: "allow" | "deny" }
@@ -57,17 +56,11 @@ export type WebviewToExtensionMessage =
 
 /** Messages sent FROM the extension host TO the webview (data & events). */
 export type ExtensionToWebviewMessage =
-  // Pipeline path messages (one-shot search → prompt → agent execution)
-  | { type: "progress"; text: string }
+  // General messages (used by chatPanel for status, errors, and info)
   | { type: "status"; text: string }
-  | { type: "assistant"; text: string }
   | { type: "error"; text: string }
   | { type: "info"; text: string }
-  | { type: "log"; text: string }
-  | { type: "agent"; text: string }
-  | { type: "agent-error"; text: string }
-  | { type: "done"; text: string }
-  // SDK path messages (streamed from Claude conversation)
+  // Conversational agent messages (streamed from agent conversation)
   | { type: "sdk-text"; text: string; messageId: string }
   | { type: "sdk-tool-call"; toolName: string; input: string; toolCallId: string }
   | { type: "sdk-tool-result"; toolCallId: string; result: string }

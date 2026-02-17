@@ -16,12 +16,7 @@ function reduce(actions: Action[], start: AppState = initialState): AppState {
 }
 
 describe("appReducer", () => {
-  // ── Pipeline path messages ──
-
-  it("ext/progress updates statusText", () => {
-    const state = appReducer(initialState, { type: "ext/progress", text: "Searching..." });
-    expect(state.statusText).toBe("Searching...");
-  });
+  // ── General messages ──
 
   it("ext/status updates statusText and clears busy when text is empty", () => {
     const busy = { ...initialState, busy: true };
@@ -36,13 +31,6 @@ describe("appReducer", () => {
     expect(state.busy).toBe(true);
   });
 
-  it("ext/assistant adds assistant message and hides welcome", () => {
-    const state = appReducer(initialState, { type: "ext/assistant", text: "Hello" });
-    expect(state.showWelcome).toBe(false);
-    expect(state.messages).toHaveLength(1);
-    expect(state.messages[0]).toMatchObject({ kind: "chat-message", role: "assistant", text: "Hello" });
-  });
-
   it("ext/error adds error message", () => {
     const state = appReducer(initialState, { type: "ext/error", text: "Something broke" });
     expect(state.messages[0]).toMatchObject({ kind: "chat-message", role: "error" });
@@ -53,29 +41,7 @@ describe("appReducer", () => {
     expect(state.messages[0]).toMatchObject({ kind: "chat-message", role: "info" });
   });
 
-  it("ext/log adds log message", () => {
-    const state = appReducer(initialState, { type: "ext/log", text: "debug output" });
-    expect(state.messages[0]).toMatchObject({ kind: "chat-message", role: "log" });
-  });
-
-  it("ext/agent adds agent message", () => {
-    const state = appReducer(initialState, { type: "ext/agent", text: "Running..." });
-    expect(state.messages[0]).toMatchObject({ kind: "chat-message", role: "agent" });
-  });
-
-  it("ext/agent-error adds error with [stderr] prefix", () => {
-    const state = appReducer(initialState, { type: "ext/agent-error", text: "oops" });
-    expect(state.messages[0]).toMatchObject({ kind: "chat-message", role: "error", text: "[stderr] oops" });
-  });
-
-  it("ext/done adds info message and clears busy", () => {
-    const busy = { ...initialState, busy: true };
-    const state = appReducer(busy, { type: "ext/done", text: "Done!" });
-    expect(state.busy).toBe(false);
-    expect(state.messages[0]).toMatchObject({ kind: "chat-message", role: "info", text: "Done!" });
-  });
-
-  // ── SDK path messages ──
+  // ── Conversational agent messages ──
 
   it("ext/sdk-text adds assistant message and sets inConversation", () => {
     const state = appReducer(initialState, { type: "ext/sdk-text", text: "Hi", messageId: "m1" });

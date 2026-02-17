@@ -28,7 +28,7 @@ The extension gives AI coding tools direct access to business communication via 
 
 No single team can build adapters for every communication platform and every coding tool. But a community can.
 
-The architecture is built around two simple interfaces — `ContextProvider` and `CodingAgent` — so that anyone can plug in support for their own stack. You use Teams instead of Slack? Write a Teams adapter and everyone benefits. You prefer Cursor over Claude Code? Same thing.
+The architecture is built around two simple interfaces — `BusinessContextProvider` and `ConversationalAgent` — so that anyone can plug in support for their own stack. You use Teams instead of Slack? Write a Teams adapter and everyone benefits. You prefer Codex over Claude Code? Same thing.
 
 This is the kind of tool that gets better the more people contribute to it. Community contributions are welcome.
 
@@ -61,20 +61,15 @@ The most impactful contributions are **new providers**. Each one makes the tool 
 See [CONTRIBUTING.md](../CONTRIBUTING.md) for a step-by-step guide. Adding a provider touches exactly 3 files.
 
 **Other ways to contribute:**
-- Better query analysis (more natural language patterns)
-- Smarter message clustering in disambiguation
 - Bug reports and feature ideas via GitHub Issues
 
 ## Roadmap
 
 ### Phase 1: Core (Current)
 - [x] Slack context provider
-- [x] Claude Code coding agent (one-shot pipeline)
 - [x] Claude Agent SDK integration (multi-turn, MCP-driven)
 - [x] MCP tools: `search_slack`, `get_slack_thread` (in-process, no separate server)
-- [x] Query analysis (stakeholders, timeframes, keywords)
-- [x] Disambiguation UI
-- [x] Provider abstraction (ContextProvider + CodingAgent interfaces)
+- [x] ConversationalAgent abstraction (agent-agnostic chatPanel)
 - [x] Chat webview with tool call/result rendering and follow-ups
 - [ ] End-to-end testing with real Slack workspace
 - [ ] VS Code marketplace publishing
@@ -101,7 +96,7 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for a step-by-step guide. Adding a pro
 
 ## Multi-Agent Strategy
 
-Conduit currently wraps the Claude Agent SDK as its primary coding agent. The SDK path (subprocess streaming, MCP tools, approval callbacks, session resume) is tightly coupled to Claude — but the coupling is contained within `providers/agents/claude-sdk/` and the `sdk-*` message types. Adding a second agent means extracting an abstract `ConversationAgent` interface and creating a parallel adapter.
+Conduit wraps the Claude Agent SDK as its primary coding agent via the `ConversationalAgent` interface. Agent-specific coupling is contained within `providers/agents/claude-sdk/`. The chatPanel programs against the abstract interface, so adding a second agent requires zero changes to chatPanel or webview code — just a new adapter and registration.
 
 ### Next target: OpenAI Codex SDK
 
@@ -124,11 +119,10 @@ Cursor, Windsurf, and Devin are proprietary/closed with no embeddable SDK. Aider
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Agent architecture | Two paths: SDK (conversational MCP) + CodingAgent (one-shot pipeline) | SDK path for MCP-capable tools (Claude, Codex), pipeline path for simpler agents |
+| Agent architecture | ConversationalAgent interface | All agents use the multi-turn streaming path with MCP tools |
 | MCP integration | In-process via `createSdkMcpServer()` | No separate stdio server needed; tools wrap ContextProvider directly |
 | Session management | SDK V1 `query()` with `resume` | SDK manages conversation history internally; supports multi-turn follow-ups |
 | Auth approach | CLI subprocess (user's subscription) | No per-token costs, users keep their existing AI subscriptions |
 | Slack auth | User OAuth Token (xoxp-) | `search.messages` requires user token, not bot token |
 | Architecture | Provider/adapter pattern | Anyone can add a platform without touching core code |
 | License | MIT | Maximum freedom for contributors and users |
-| Query analysis | Local regex/pattern matching | No API calls needed, instant, works offline |

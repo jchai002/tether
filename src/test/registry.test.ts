@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { ProviderRegistry } from "../providers/registry";
 import { BusinessContextProvider } from "../providers/businessContextProvider";
-import { CodingAgent } from "../providers/codingAgent";
+import type { ConversationalAgent, AgentConversation, ConversationOptions, OnAgentMessage, AgentSetupInfo } from "../providers/conversationalAgent";
 
 const fakeProvider = (id: string): BusinessContextProvider => ({
   id,
@@ -12,11 +12,37 @@ const fakeProvider = (id: string): BusinessContextProvider => ({
   getThread: async () => null,
 });
 
-const fakeAgent = (id: string): CodingAgent => ({
+const fakeConversationalAgent = (id: string): ConversationalAgent => ({
   id,
   displayName: `Agent ${id}`,
   isAvailable: async () => true,
-  execute: async () => ({ success: true, output: "" }),
+  isAuthenticated: async () => true,
+  isAuthError: () => false,
+  getSetupInfo: (): AgentSetupInfo => ({ displayName: `Agent ${id}`, installCommand: "npm install", cliBinaryName: "agent" }),
+  getSetupCommand: () => "agent",
+  resetCache: () => {},
+  createConversation: (_options: ConversationOptions, _onMessage: OnAgentMessage): AgentConversation => ({
+    start: async () => {},
+    followUp: async () => {},
+    cancel: () => {},
+    handlePermissionResponse: () => {},
+    handleUserQuestionResponse: () => {},
+    handlePlanReviewResponse: () => {},
+    setPermissionMode: () => {},
+    isRunning: false,
+    sessionId: null,
+  }),
+  createConversationForResume: (_options: ConversationOptions, _onMessage: OnAgentMessage, _existingSessionId: string): AgentConversation => ({
+    start: async () => {},
+    followUp: async () => {},
+    cancel: () => {},
+    handlePermissionResponse: () => {},
+    handleUserQuestionResponse: () => {},
+    handlePlanReviewResponse: () => {},
+    setPermissionMode: () => {},
+    isRunning: false,
+    sessionId: null,
+  }),
 });
 
 describe("ProviderRegistry", () => {
@@ -27,11 +53,11 @@ describe("ProviderRegistry", () => {
     expect(registry.getBusinessContext("slack")).toBe(provider);
   });
 
-  it("registers and retrieves a coding agent", () => {
+  it("registers and retrieves a conversational agent", () => {
     const registry = new ProviderRegistry();
-    const agent = fakeAgent("claude-code");
-    registry.registerCodingAgent(agent);
-    expect(registry.getCodingAgent("claude-code")).toBe(agent);
+    const agent = fakeConversationalAgent("claude-code-cli");
+    registry.registerConversationalAgent(agent);
+    expect(registry.getConversationalAgent("claude-code-cli")).toBe(agent);
   });
 
   it("returns undefined for unknown provider", () => {
@@ -41,7 +67,7 @@ describe("ProviderRegistry", () => {
 
   it("returns undefined for unknown agent", () => {
     const registry = new ProviderRegistry();
-    expect(registry.getCodingAgent("nonexistent")).toBeUndefined();
+    expect(registry.getConversationalAgent("nonexistent")).toBeUndefined();
   });
 
   it("lists all providers", () => {
@@ -53,12 +79,11 @@ describe("ProviderRegistry", () => {
     expect(all.map((p) => p.id)).toEqual(["slack", "mock"]);
   });
 
-  it("lists all agents", () => {
+  it("lists all conversational agents", () => {
     const registry = new ProviderRegistry();
-    registry.registerCodingAgent(fakeAgent("claude-code"));
-    registry.registerCodingAgent(fakeAgent("mock"));
-    const all = registry.getAllCodingAgents();
-    expect(all).toHaveLength(2);
+    registry.registerConversationalAgent(fakeConversationalAgent("claude-code-cli"));
+    const all = registry.getAllConversationalAgents();
+    expect(all).toHaveLength(1);
   });
 
   it("overwrites provider with same id", () => {

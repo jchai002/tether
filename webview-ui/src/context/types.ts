@@ -16,7 +16,7 @@ import type { PermissionModeValue, SessionMeta } from "../types";
 export interface ChatMessage {
   id: string;
   kind: "chat-message";
-  role: "user" | "assistant" | "error" | "info" | "log" | "agent";
+  role: "user" | "assistant" | "error" | "info";
   text: string;
 }
 
@@ -158,15 +158,9 @@ export const initialState: AppState = {
  */
 export type Action =
   // From extension messages
-  | { type: "ext/progress"; text: string }
   | { type: "ext/status"; text: string }
-  | { type: "ext/assistant"; text: string }
   | { type: "ext/error"; text: string }
   | { type: "ext/info"; text: string }
-  | { type: "ext/log"; text: string }
-  | { type: "ext/agent"; text: string }
-  | { type: "ext/agent-error"; text: string }
-  | { type: "ext/done"; text: string }
   | { type: "ext/sdk-text"; text: string; messageId: string }
   | { type: "ext/sdk-tool-call"; toolName: string; input: string; toolCallId: string }
   | { type: "ext/sdk-tool-result"; toolCallId: string; result: string }

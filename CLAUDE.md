@@ -17,36 +17,28 @@ src/
 ├── providers/
 │   ├── types.ts                  # Message, Thread, SearchOptions (shared types)
 │   ├── businessContextProvider.ts # BusinessContextProvider interface
-│   ├── codingAgent.ts            # CodingAgent interface (pipeline path)
+│   ├── conversationalAgent.ts    # ConversationalAgent interface
 │   ├── registry.ts               # ProviderRegistry
 │   ├── business-context/         # Communication platform adapters
 │   │   └── slack/                # Slack adapter
 │   └── agents/
-│       ├── claude/               # Claude Code CLI adapter (pipeline path)
-│       └── claude-sdk/           # Claude Agent SDK adapter (SDK path)
-│           ├── claudeSDKAgent.ts # SDK conversation management
+│       └── claude-sdk/           # Claude Agent SDK adapter
+│           ├── claudeSDKAgent.ts # Conversation management
 │           ├── mcpTools.ts       # MCP tool definitions (provider-agnostic)
 │           └── systemPrompt.ts   # System prompt with tool guidance
 ├── chat/
-│   ├── chatPanel.ts              # Extension ↔ webview bridge, routes both paths
+│   ├── chatPanel.ts              # Extension ↔ webview bridge
 │   ├── sessionStore.ts           # Persistent session storage (workspaceState)
 │   └── messages.ts               # Typed message protocol (extension ↔ webview)
-├── services/
-│   └── queryService.ts           # Query execution orchestration (pipeline path)
-├── query/                        # Query analysis (platform-agnostic)
-├── ui/                           # VS Code UI components (platform-agnostic)
 ├── webview/
 │   └── template.ts               # HTML template for webview panel
-├── contextPromptBuilder.ts       # Prompt assembly (pipeline path)
 └── extension.ts                  # Entry point, wires registry
 ```
 
 ## Architecture Rules
 
 - **All context sources must implement `BusinessContextProvider`** (src/providers/businessContextProvider.ts). Never import platform-specific code (Slack, Teams, etc.) outside of its own `providers/business-context/<platform>/` directory.
-- **All coding tools must implement `CodingAgent`** (src/providers/codingAgent.ts) for the pipeline path. The SDK path uses `ClaudeSDKAgent` directly. Never import tool-specific code outside of its own `providers/agents/<tool>/` directory.
-- **Core orchestration is platform-agnostic.** `extension.ts`, `disambiguation.ts`, `contextPromptBuilder.ts`, and `queryAnalyzer.ts` only use the generic `Message` and `Thread` types from `providers/types.ts`.
-- **The only place provider-specific logic is allowed in extension.ts** is `instanceof` checks for provider-specific search plan methods (e.g. `SlackProvider.buildSearchPlan`). Keep these minimal.
+- **All coding agents must implement `ConversationalAgent`** (src/providers/conversationalAgent.ts). Never import agent-specific code outside of its own `providers/agents/<tool>/` directory. `chatPanel.ts` programs against the abstract interface.
 - **New providers require exactly 3 changes:** (1) create adapter in `providers/business-context/<name>/` or `providers/agents/<name>/`, (2) register in `extension.ts` activate, (3) add to `package.json` config enum.
 
 ## Workflow Rules

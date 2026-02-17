@@ -3,13 +3,7 @@ import * as crypto from "crypto";
 import { WebClient } from "@slack/web-api";
 import { BusinessContextProvider } from "../../businessContextProvider";
 import { Message, Thread, SearchOptions } from "../../types";
-import { AnalyzedQuery } from "../../../query/queryAnalyzer";
 import { SlackCache, SlackUser, SlackChannel } from "./slackCache";
-
-export interface SlackSearchPlan {
-  queries: string[];
-  strategy: "broad" | "targeted" | "multi";
-}
 
 export class SlackProvider implements BusinessContextProvider {
   readonly id = "slack";
@@ -82,104 +76,6 @@ export class SlackProvider implements BusinessContextProvider {
       parentMessage: this.toMessage(messages[0], channelId),
       replies: messages.slice(1).map((msg: any) => this.toMessage(msg, channelId)),
     };
-  }
-
-  buildQuery(params: {
-    keywords?: string;
-    from?: string;
-    inChannel?: string;
-    after?: string;
-    before?: string;
-  }): string {
-    const parts: string[] = [];
-
-    if (params.keywords) parts.push(params.keywords);
-    if (params.from) parts.push(`from:${params.from}`);
-    if (params.inChannel) parts.push(`in:${params.inChannel}`);
-    if (params.after) parts.push(`after:${params.after}`);
-    if (params.before) parts.push(`before:${params.before}`);
-
-    return parts.join(" ");
-  }
-
-  buildSearchPlan(analyzed: AnalyzedQuery): SlackSearchPlan {
-    const { confidence, stakeholders, timeframe, keywords } = analyzed;
-
-    if (confidence === "specific") {
-      const query = this.buildQuery({
-        keywords: keywords.join(" "),
-        from: stakeholders[0],
-        after: timeframe.after,
-        before: timeframe.before,
-      });
-      return { queries: [query], strategy: "targeted" };
-    }
-
-    if (confidence === "partial") {
-      const queries: string[] = [];
-
-      if (stakeholders.length > 0 && keywords.length > 0) {
-        queries.push(
-          this.buildQuery({
-            keywords: keywords.join(" "),
-            from: stakeholders[0],
-            after: timeframe.after,
-            before: timeframe.before,
-          })
-        );
-        queries.push(
-          this.buildQuery({
-            keywords: keywords.join(" "),
-            after: timeframe.after,
-            before: timeframe.before,
-          })
-        );
-      } else if (stakeholders.length > 0) {
-        queries.push(
-          this.buildQuery({
-            from: stakeholders[0],
-            after: timeframe.after ?? this.defaultAfter(),
-            before: timeframe.before,
-          })
-        );
-      } else {
-        queries.push(
-          this.buildQuery({
-            keywords: keywords.join(" "),
-            after: timeframe.after ?? this.defaultAfter(),
-            before: timeframe.before,
-          })
-        );
-      }
-
-      return { queries, strategy: "multi" };
-    }
-
-    const queries: string[] = [];
-
-    if (stakeholders.length > 0) {
-      queries.push(
-        this.buildQuery({
-          from: stakeholders[0],
-          after: timeframe.after ?? this.defaultAfter(),
-        })
-      );
-    }
-
-    if (keywords.length > 0) {
-      queries.push(
-        this.buildQuery({
-          keywords: keywords.join(" "),
-          after: timeframe.after ?? this.defaultAfter(),
-        })
-      );
-    }
-
-    if (queries.length === 0) {
-      queries.push(this.buildQuery({ after: this.defaultAfter() }));
-    }
-
-    return { queries, strategy: "broad" };
   }
 
   async resolveUser(input: string): Promise<SlackUser[]> {
@@ -365,9 +261,4 @@ export class SlackProvider implements BusinessContextProvider {
     };
   }
 
-  private defaultAfter(): string {
-    const d = new Date();
-    d.setDate(d.getDate() - 14);
-    return d.toISOString().split("T")[0];
-  }
 }

@@ -11,15 +11,13 @@
  * - Sends messages back to the webview for rendering
  * - Manages agent conversations and buffers messages for session persistence
  *
- * Two code paths exist:
- * - Conversational path: If the configured agent is registered as a
- *   ConversationalAgent, uses it for multi-turn streaming with MCP tools
- * - Pipeline path (fallback): One-shot search → build prompt → execute
+ * All queries go through the conversational path: the configured agent
+ * (registered as a ConversationalAgent) handles multi-turn streaming with
+ * MCP tools, permissions, and session persistence.
  */
 import * as vscode from "vscode";
 import * as crypto from "crypto";
 import { ProviderRegistry } from "../providers/registry";
-import { executeQuery } from "../services/queryService";
 import { getWebviewHtml } from "../webview/template";
 import type { ConversationalAgent, AgentConversation } from "../providers/conversationalAgent";
 import { SessionStore, StoredMessage } from "./sessionStore";
@@ -141,9 +139,6 @@ export class ChatPanel {
       case "query":
         await this.handleQuery(msg.text);
         break;
-      case "search":
-        await this.handleSearch(msg.text);
-        break;
       case "followup":
         await this.handleFollowUp(msg.text);
         break;
@@ -225,135 +220,13 @@ export class ChatPanel {
     const config = this.getConfig();
     debug(`handleQuery config: ${JSON.stringify(config)}`);
 
-    // If the configured agent is registered as a conversational agent,
-    // use the multi-turn streaming path. Otherwise fall through to pipeline.
-    const convAgent = this.registry.getConversationalAgent(config.codingAgent);
-    if (convAgent) {
-      await this.handleConversationalQuery(text, convAgent);
-      return;
-    }
-
-    const provider = this.registry.getBusinessContext(config.contextProvider);
-    const agent = this.registry.getCodingAgent(config.codingAgent);
-
-    if (!provider) {
-      this.post({ type: "error", text: `Context provider "${config.contextProvider}" not found.` });
-      return;
-    }
-    if (!provider.isConfigured()) {
-      this.post({ type: "error", text: `${provider.displayName} is not configured. Run "Conduit: Configure" from the command palette.` });
-      return;
-    }
+    const agent = this.registry.getConversationalAgent(config.codingAgent);
     if (!agent) {
-      this.post({ type: "error", text: `Coding agent "${config.codingAgent}" not found.` });
+      this.post({ type: "error", text: `Coding agent "${config.codingAgent}" not found. Check your businessContext.codingAgent setting.` });
       return;
     }
 
-    const folders = vscode.workspace.workspaceFolders;
-    if (!folders || folders.length === 0) {
-      this.post({ type: "error", text: "No workspace folder open. Open a project folder first." });
-      return;
-    }
-    const workDir = folders[0].uri.fsPath;
-
-    this.post({ type: "status", text: "Searching..." });
-
-    try {
-      const result = await executeQuery({
-        userInput: text,
-        provider,
-        agent,
-        workDir,
-        config: {
-          maxSearchResults: config.maxSearchResults,
-          maxThreadMessages: config.maxThreadMessages,
-        },
-        progress: {
-          report: (msg) => this.post({ type: "progress", text: msg }),
-        },
-        mentionResolver: {
-          resolveAmbiguousUser: async (rawUser, matches) => {
-            this.post({
-              type: "info",
-              text: `Multiple matches for @${rawUser} — using ${matches[0].realName} (${matches[0].name})`,
-            });
-            return matches[0].name;
-          },
-          resolveAmbiguousChannel: async (rawChannel, matches) => {
-            this.post({
-              type: "info",
-              text: `Multiple matches for #${rawChannel} — using #${matches[0].name}`,
-            });
-            return matches[0].name;
-          },
-        },
-        disambiguation: {
-          disambiguate: async (clusters) => {
-            const lines = clusters
-              .map((c, i) => `${i + 1}. **${c.label}** — ${c.description} (${c.messages.length} messages)`)
-              .join("\n");
-            this.post({
-              type: "info",
-              text: `Found multiple topics:\n${lines}\n\nIncluding all topics.`,
-            });
-            return clusters;
-          },
-        },
-        output: {
-          log: (text) => this.post({ type: "log", text }),
-          agentOutput: (text) => this.post({ type: "agent", text }),
-          agentError: (text) => this.post({ type: "agent-error", text }),
-        },
-        isCancelled: () => false,
-      });
-
-      if (result.messagesFound === 0 && result.success) {
-        this.post({ type: "assistant", text: "No messages found matching your query. Try being more specific." });
-      } else if (result.success) {
-        this.post({ type: "done", text: `Completed. Found ${result.messagesFound} messages, ${result.threadsFound} threads.` });
-      } else if (result.error) {
-        this.post({ type: "error", text: result.error });
-      }
-    } catch (err: any) {
-      this.post({ type: "error", text: err.message });
-    }
-
-    this.post({ type: "status", text: "" });
-  }
-
-  private async handleSearch(text: string) {
-    const config = this.getConfig();
-    const provider = this.registry.getBusinessContext(config.contextProvider);
-
-    if (!provider || !provider.isConfigured()) {
-      this.post({ type: "error", text: "Provider not configured." });
-      return;
-    }
-
-    this.post({ type: "status", text: "Searching..." });
-
-    try {
-      const results = await provider.searchMessages({
-        query: text,
-        maxResults: config.maxSearchResults,
-      });
-
-      if (results.length === 0) {
-        this.post({ type: "assistant", text: "No messages found. Try a different query." });
-      } else {
-        const formatted = results
-          .map((m) => `**${m.author}** in #${m.channel}\n> ${m.text}`)
-          .join("\n\n---\n\n");
-        this.post({
-          type: "assistant",
-          text: `Found ${results.length} messages:\n\n${formatted}`,
-        });
-      }
-    } catch (err: any) {
-      this.post({ type: "error", text: err.message });
-    }
-
-    this.post({ type: "status", text: "" });
+    await this.handleConversationalQuery(text, agent);
   }
 
   /** Starts a new conversational agent query. Creates a session, sets up the
@@ -631,9 +504,7 @@ export class ChatPanel {
     const agent = this.registry.getConversationalAgent(config.codingAgent);
 
     if (!agent) {
-      // No conversational agent configured — skip setup check (pipeline agents
-      // don't need CLI detection; they're checked at query time).
-      this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: true });
+      this.post({ type: "error", text: `Coding agent "${config.codingAgent}" not found. Check your businessContext.codingAgent setting.` });
       return;
     }
 

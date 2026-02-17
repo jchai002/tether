@@ -19,15 +19,9 @@ export function useExtensionMessage() {
     function handleMessage(event: MessageEvent<ExtensionToWebviewMessage>) {
       const msg = event.data;
       switch (msg.type) {
-        // Pipeline path
-        case "progress":
-          dispatch({ type: "ext/progress", text: msg.text });
-          break;
+        // General messages
         case "status":
           dispatch({ type: "ext/status", text: msg.text });
-          break;
-        case "assistant":
-          dispatch({ type: "ext/assistant", text: msg.text });
           break;
         case "error":
           dispatch({ type: "ext/error", text: msg.text });
@@ -35,20 +29,8 @@ export function useExtensionMessage() {
         case "info":
           dispatch({ type: "ext/info", text: msg.text });
           break;
-        case "log":
-          dispatch({ type: "ext/log", text: msg.text });
-          break;
-        case "agent":
-          dispatch({ type: "ext/agent", text: msg.text });
-          break;
-        case "agent-error":
-          dispatch({ type: "ext/agent-error", text: msg.text });
-          break;
-        case "done":
-          dispatch({ type: "ext/done", text: msg.text });
-          break;
 
-        // SDK path
+        // Conversational agent messages
         case "sdk-text":
           dispatch({ type: "ext/sdk-text", text: msg.text, messageId: msg.messageId });
           break;

@@ -20,18 +20,14 @@ src/
 ├── providers/
 │   ├── types.ts                  # Message, Thread, SearchOptions (shared)
 │   ├── businessContextProvider.ts # BusinessContextProvider interface
-│   ├── codingAgent.ts            # CodingAgent interface (pipeline path)
+│   ├── conversationalAgent.ts    # ConversationalAgent interface
 │   ├── registry.ts               # Provider registry
 │   ├── business-context/         # Communication platform adapters
 │   │   └── slack/                # Slack implementation
 │   └── agents/
-│       ├── claude/               # Claude Code CLI adapter (pipeline path)
-│       └── claude-sdk/           # Claude Agent SDK adapter (SDK path)
+│       └── claude-sdk/           # Claude Agent SDK adapter
 ├── chat/                         # Chat panel, session storage, message protocol
-├── services/                     # Query execution orchestration
-├── query/                        # Query analysis (platform-agnostic)
-├── ui/                           # VS Code UI (platform-agnostic)
-├── contextPromptBuilder.ts       # Prompt assembly (pipeline path)
+├── webview/                      # HTML template for webview panel
 └── extension.ts                  # Entry point
 ```
 
@@ -110,26 +106,32 @@ Add any provider-specific settings under the `businessContext.<platform>.*` name
 
 Add your platform SDK to `dependencies` in `package.json` (e.g. `@microsoft/microsoft-graph-client`).
 
-That's it. The query analyzer, disambiguation UI, prompt builder, and coding agent integration all work automatically with your new provider. MCP tools for the SDK path are also generated automatically — tool names derive from the provider's `id` field (e.g. `search_teams`, `get_teams_thread`).
+That's it. MCP tools are generated automatically — tool names derive from the provider's `id` field (e.g. `search_teams`, `get_teams_thread`).
 
-## Adding a Coding Agent (Copilot, Cursor, Aider, etc.)
+## Adding a Coding Agent (Codex, Copilot, etc.)
 
-Create `src/providers/agents/<tool>/<tool>Agent.ts` implementing `CodingAgent`:
+Create `src/providers/agents/<tool>/<tool>Agent.ts` implementing `ConversationalAgent`:
 
 ```typescript
-import { CodingAgent, CodingAgentOptions, CodingAgentResult } from "../codingAgent";
+import type { ConversationalAgent, AgentConversation, ConversationOptions, OnAgentMessage } from "../../conversationalAgent";
 
-export class CopilotAgent implements CodingAgent {
-  readonly id = "copilot";
-  readonly displayName = "GitHub Copilot";
+export class CodexAgent implements ConversationalAgent {
+  readonly id = "codex";
+  readonly displayName = "OpenAI Codex";
 
-  async isAvailable(): Promise<boolean> {
-    // Check if the tool is installed / accessible
+  async isAvailable(): Promise<boolean> { /* Check if CLI is installed */ }
+  async isAuthenticated(): Promise<boolean> { /* Check auth status */ }
+  isAuthError(text: string): boolean { /* Detect auth errors in output */ }
+  getSetupInfo() { return { displayName: "Codex", installCommand: "npm install -g @openai/codex", cliBinaryName: "codex" }; }
+  getSetupCommand(): string { return "codex --auth"; }
+  resetCache(): void { /* Clear cached binary path */ }
+
+  createConversation(options: ConversationOptions, onMessage: OnAgentMessage): AgentConversation {
+    // Create and return a conversation that streams via onMessage callback
   }
 
-  async execute(options: CodingAgentOptions): Promise<CodingAgentResult> {
-    // Send prompt to the tool, stream output via options.onOutput
-    // Return success/failure
+  createConversationForResume(options: ConversationOptions, onMessage: OnAgentMessage, existingSessionId: string): AgentConversation {
+    // Resume an existing conversation by session ID
   }
 }
 ```
@@ -172,6 +174,5 @@ Then register it in `extension.ts` and add to the `businessContext.codingAgent` 
 - Continue
 
 **Core Improvements:**
-- Better query analysis (more natural language patterns)
-- Smarter message clustering in disambiguation
 - Inline code diff viewer with accept/reject in the webview
+- Bug reports and feature ideas via GitHub Issues

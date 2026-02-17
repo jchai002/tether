@@ -119,8 +119,8 @@ function findClaudeBinary(): string | undefined {
  * - System prompt (reused as long as the workspace hasn't changed)
  */
 export class ClaudeSDKAgent implements ConversationalAgent {
-  readonly id = "claude-sdk";
-  readonly displayName = "Claude Code (SDK)";
+  readonly id = "claude-code-cli";
+  readonly displayName = "Claude Code CLI";
 
   /** Cached Claude CLI path — resolved once via execSync, reused forever. */
   private cachedBinaryPath: string | undefined;

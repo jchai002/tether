@@ -78,10 +78,7 @@ function toolCallToItem(toolName: string, input: string, toolCallId: string): Me
 
 export function appReducer(state: AppState, action: Action): AppState {
   switch (action.type) {
-    // ── Pipeline path messages ──
-
-    case "ext/progress":
-      return { ...state, statusText: action.text };
+    // ── General messages (status bar, errors, info) ──
 
     case "ext/status":
       return {
@@ -90,15 +87,11 @@ export function appReducer(state: AppState, action: Action): AppState {
         busy: action.text ? state.busy : false,
       };
 
-    case "ext/assistant":
     case "ext/error":
-    case "ext/info":
-    case "ext/log": {
+    case "ext/info": {
       const roleMap = {
-        "ext/assistant": "assistant",
         "ext/error": "error",
         "ext/info": "info",
-        "ext/log": "log",
       } as const;
       return {
         ...state,
@@ -107,29 +100,7 @@ export function appReducer(state: AppState, action: Action): AppState {
       };
     }
 
-    case "ext/agent":
-      return {
-        ...state,
-        showWelcome: false,
-        messages: [...state.messages, chatMsg("agent", action.text)],
-      };
-
-    case "ext/agent-error":
-      return {
-        ...state,
-        showWelcome: false,
-        messages: [...state.messages, chatMsg("error", "[stderr] " + action.text)],
-      };
-
-    case "ext/done":
-      return {
-        ...state,
-        showWelcome: false,
-        busy: false,
-        messages: [...state.messages, chatMsg("info", action.text)],
-      };
-
-    // ── SDK path messages ──
+    // ── Conversational agent messages ──
 
     case "ext/sdk-text":
       return {

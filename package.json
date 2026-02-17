@@ -16,14 +16,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "businessContext.query",
-        "title": "Conduit: Query with Context"
-      },
-      {
-        "command": "businessContext.search",
-        "title": "Conduit: Search Messages"
-      },
-      {
         "command": "businessContext.configure",
         "title": "Conduit: Configure"
       },
@@ -60,16 +52,12 @@
         },
         "businessContext.codingAgent": {
           "type": "string",
-          "default": "claude-sdk",
+          "default": "claude-code-cli",
           "enum": [
-            "claude-sdk",
-            "claude-code",
-            "mock"
+            "claude-code-cli"
           ],
           "enumDescriptions": [
-            "Claude Code SDK (agentic, multi-turn with MCP tools)",
-            "Claude Code CLI (one-shot pipeline)",
-            "Mock Agent (echoes prompt, no file changes)"
+            "Claude Code CLI (multi-turn agentic conversations)"
           ],
           "description": "Which AI coding tool to use for implementation.",
           "order": 2
