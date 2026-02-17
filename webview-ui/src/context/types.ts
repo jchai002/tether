@@ -116,7 +116,11 @@ export interface AppState {
   /** Tracks whether the Claude CLI is ready for use.
    *  null = not yet checked (initial state), object = check completed.
    *  We use null to avoid flashing the setup screen before the check runs. */
-  setupStatus: { cliInstalled: boolean; cliAuthenticated: boolean } | null;
+  setupStatus: {
+    cliInstalled: boolean;
+    cliAuthenticated: boolean;
+    setupInfo?: { displayName: string; installCommand: string; cliBinaryName: string };
+  } | null;
   /** Tracks Slack connection status.
    *  null = not yet checked, object = check completed. */
   slackStatus: { connected: boolean; workspaceName?: string } | null;
@@ -175,7 +179,8 @@ export type Action =
   | { type: "ext/user-question"; requestId: string; questions: UserQuestionItem["questions"] }
   | { type: "ext/plan-review"; requestId: string; planText: string }
   | { type: "ext/permission-mode"; mode: PermissionModeValue }
-  | { type: "ext/setup-status"; cliInstalled: boolean; cliAuthenticated: boolean }
+  | { type: "ext/setup-status"; cliInstalled: boolean; cliAuthenticated: boolean;
+      setupInfo?: { displayName: string; installCommand: string; cliBinaryName: string } }
   | { type: "ext/slack-status"; connected: boolean; workspaceName?: string }
   | { type: "ext/session-list"; sessions: SessionMeta[] }
   | { type: "ext/session-opened"; title: string; messages: Array<

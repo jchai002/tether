@@ -22,6 +22,7 @@ import { CodingAgent } from "./providers/codingAgent";
 import { SlackProvider } from "./providers/business-context/slack/slackProvider";
 import { MockProvider } from "./providers/business-context/mock/mockProvider";
 import { ClaudeAgent } from "./providers/agents/claude/claudeAgent";
+import { ClaudeSDKAgent } from "./providers/agents/claude-sdk/claudeSDKAgent";
 import { MockAgent } from "./providers/agents/mock/mockAgent";
 import { disambiguate } from "./ui/disambiguation";
 import {
@@ -46,6 +47,7 @@ export function activate(context: vscode.ExtensionContext) {
   registry.registerBusinessContext(new MockProvider());
   registry.registerCodingAgent(new ClaudeAgent());
   registry.registerCodingAgent(new MockAgent());
+  registry.registerConversationalAgent(new ClaudeSDKAgent());
 
   // Register URI handler for OAuth callbacks
   context.subscriptions.push(
@@ -169,9 +171,11 @@ function getActiveBusinessContext(): BusinessContextProvider | undefined {
 function getActiveCodingAgent(): CodingAgent | undefined {
   const { codingAgent: id } = getConfig();
 
-  if (id === "claude-sdk") {
+  // If the configured agent is a conversational agent (not a pipeline agent),
+  // it uses the chat panel, not the command palette.
+  if (registry.getConversationalAgent(id)) {
     vscode.window.showInformationMessage(
-      'Claude SDK mode uses the chat panel. Run "Conduit: Open Chat" instead.'
+      `${id} uses the chat panel. Run "Conduit: Open Chat" instead.`
     );
     return undefined;
   }

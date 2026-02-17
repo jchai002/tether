@@ -88,7 +88,8 @@ export type ExtensionToWebviewMessage =
   // Setup status — sent on webview-ready and when user clicks "Check Again".
   // Tells the webview whether the Claude CLI is installed and authenticated
   // so it can show the setup screen or transition to the normal chat experience.
-  | { type: "setup-status"; cliInstalled: boolean; cliAuthenticated: boolean }
+  | { type: "setup-status"; cliInstalled: boolean; cliAuthenticated: boolean;
+      setupInfo?: { displayName: string; installCommand: string; cliBinaryName: string } }
   // Provider connection status — sent on webview-ready and when connection state changes
   | { type: "slack-status"; connected: boolean; workspaceName?: string }
   // Session management

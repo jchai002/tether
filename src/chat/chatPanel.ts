@@ -12,16 +12,16 @@
  * - Manages SDK conversations and buffers messages for session persistence
  *
  * Two code paths exist:
- * - SDK path (codingAgent === "claude-sdk"): Uses ClaudeSDKAgent for a
- *   conversational, multi-turn experience with live streaming
- * - Pipeline path (any other agent): One-shot search → build prompt → execute
+ * - Conversational path: If the configured agent is registered as a
+ *   ConversationalAgent, uses it for multi-turn streaming with MCP tools
+ * - Pipeline path (fallback): One-shot search → build prompt → execute
  */
 import * as vscode from "vscode";
 import * as crypto from "crypto";
 import { ProviderRegistry } from "../providers/registry";
 import { executeQuery } from "../services/queryService";
 import { getWebviewHtml } from "../webview/template";
-import { ClaudeSDKAgent, SDKConversation } from "../providers/agents/claude-sdk/claudeSDKAgent";
+import type { ConversationalAgent, AgentConversation } from "../providers/conversationalAgent";
 import { SessionStore, StoredMessage } from "./sessionStore";
 import type { ExtensionToWebviewMessage, PermissionModeValue, WebviewToExtensionMessage } from "./messages";
 
@@ -48,8 +48,8 @@ export class ChatPanel {
   private static instance: ChatPanel | undefined;
   private panel: vscode.WebviewPanel;
   private disposables: vscode.Disposable[] = [];
-  private sdkAgent: ClaudeSDKAgent | null = null;
-  private sdkConversation: SDKConversation | null = null;
+  private conversationalAgent: ConversationalAgent | null = null;
+  private conversation: AgentConversation | null = null;
   private permissionMode: PermissionModeValue = "acceptEdits";
   private sessionStore: SessionStore;
   private activeSessionId: string | null = null;
@@ -107,9 +107,9 @@ export class ChatPanel {
   }
 
   private dispose() {
-    if (this.sdkConversation) {
-      this.sdkConversation.cancel();
-      this.sdkConversation = null;
+    if (this.conversation) {
+      this.conversation.cancel();
+      this.conversation = null;
     }
     ChatPanel.instance = undefined;
     this.panel.dispose();
@@ -151,13 +151,13 @@ export class ChatPanel {
         this.handleCancel();
         break;
       case "permission-response":
-        this.sdkConversation?.handlePermissionResponse(
+        this.conversation?.handlePermissionResponse(
           msg.requestId,
           msg.behavior
         );
         break;
       case "user-question-response":
-        this.sdkConversation?.handleUserQuestionResponse(
+        this.conversation?.handleUserQuestionResponse(
           msg.requestId,
           msg.answers
         );
@@ -171,7 +171,7 @@ export class ChatPanel {
         });
         break;
       case "plan-review-response":
-        this.sdkConversation?.handlePlanReviewResponse(msg.requestId, msg.action);
+        this.conversation?.handlePlanReviewResponse(msg.requestId, msg.action);
         // Persist the user's choice so it survives session restoration.
         this.messageBuffer.push({
           role: "tool-result",
@@ -183,7 +183,7 @@ export class ChatPanel {
       case "set-permission-mode":
         this.permissionMode = msg.mode;
         // Update the active conversation so the next query uses the new mode
-        this.sdkConversation?.setPermissionMode(msg.mode);
+        this.conversation?.setPermissionMode(msg.mode);
         // Echo back so the webview updates its UI state
         this.post({ type: "permission-mode", mode: msg.mode });
         break;
@@ -225,8 +225,11 @@ export class ChatPanel {
     const config = this.getConfig();
     debug(`handleQuery config: ${JSON.stringify(config)}`);
 
-    if (config.codingAgent === "claude-sdk") {
-      await this.handleClaudeSDKQuery(text);
+    // If the configured agent is registered as a conversational agent,
+    // use the multi-turn streaming path. Otherwise fall through to pipeline.
+    const convAgent = this.registry.getConversationalAgent(config.codingAgent);
+    if (convAgent) {
+      await this.handleConversationalQuery(text, convAgent);
       return;
     }
 
@@ -353,10 +356,10 @@ export class ChatPanel {
     this.post({ type: "status", text: "" });
   }
 
-  /** Starts a new SDK conversation. Creates a session, sets up the conversation
-   *  object, and begins streaming. All streamed messages pass through
-   *  bufferAndForward() which both shows them in the UI and saves them. */
-  private async handleClaudeSDKQuery(text: string) {
+  /** Starts a new conversational agent query. Creates a session, sets up the
+   *  conversation object, and begins streaming. All streamed messages pass
+   *  through bufferAndForward() which both shows them in the UI and saves them. */
+  private async handleConversationalQuery(text: string, agent: ConversationalAgent) {
     const config = this.getConfig();
     const provider = this.registry.getBusinessContext(config.contextProvider);
 
@@ -375,9 +378,7 @@ export class ChatPanel {
       return;
     }
 
-    if (!this.sdkAgent) {
-      this.sdkAgent = new ClaudeSDKAgent();
-    }
+    this.conversationalAgent = agent;
 
     // Create a new session
     const tempId = crypto.randomUUID();
@@ -387,10 +388,9 @@ export class ChatPanel {
 
     this.post({ type: "status", text: "Thinking..." });
 
-    const binaryPath = this.sdkAgent.getClaudeBinaryPath();
-    debug(`SDK query starting: provider=${config.contextProvider} workspace=${folders[0].name} binary=${binaryPath} permissionMode=${this.permissionMode}`);
+    debug(`Conversational query starting: agent=${agent.displayName} provider=${config.contextProvider} workspace=${folders[0].name} permissionMode=${this.permissionMode}`);
 
-    this.sdkConversation = this.sdkAgent.createConversation(
+    this.conversation = agent.createConversation(
       {
         provider,
         workspaceName: folders[0].name,
@@ -401,17 +401,16 @@ export class ChatPanel {
     );
 
     try {
-      await this.sdkConversation.start(text);
-      debug("SDK query completed");
+      await this.conversation.start(text);
+      debug("Conversational query completed");
     } catch (err: any) {
-      debug(`SDK query error: ${err.message}`);
-      // Runtime auth fallback (Tier 2): If the error looks like an auth failure,
+      debug(`Conversational query error: ${err.message}`);
+      // Runtime auth fallback: If the error looks like an auth failure,
       // surface the setup screen so the user can re-authenticate instead of
-      // seeing a cryptic error. This catches cases where credentials expire
-      // between the initial check and the actual query.
-      if (this.isAuthError(err)) {
+      // seeing a cryptic error. Each agent knows its own auth error patterns.
+      if (agent.isAuthError(err.message ?? "")) {
         debug("Auth error detected — switching to setup screen");
-        this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: false });
+        this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: false, setupInfo: agent.getSetupInfo() });
       }
       this.post({ type: "error", text: err.message });
     }
@@ -420,8 +419,8 @@ export class ChatPanel {
   }
 
   private async handleFollowUp(text: string) {
-    debug(`handleFollowUp: hasConversation=${!!this.sdkConversation} sessionId=${this.activeSessionId}`);
-    if (!this.sdkConversation) {
+    debug(`handleFollowUp: hasConversation=${!!this.conversation} sessionId=${this.activeSessionId}`);
+    if (!this.conversation) {
       this.post({ type: "error", text: "No active conversation. Start a new query first." });
       return;
     }
@@ -431,11 +430,11 @@ export class ChatPanel {
     this.post({ type: "status", text: "Thinking..." });
 
     try {
-      await this.sdkConversation.followUp(text);
+      await this.conversation.followUp(text);
     } catch (err: any) {
-      if (this.isAuthError(err)) {
+      if (this.conversationalAgent?.isAuthError(err.message ?? "")) {
         debug("Auth error on follow-up — switching to setup screen");
-        this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: false });
+        this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: false, setupInfo: this.conversationalAgent.getSetupInfo() });
       }
       this.post({ type: "error", text: err.message });
     }
@@ -451,12 +450,12 @@ export class ChatPanel {
     switch (msg.type) {
       case "sdk-text":
         this.messageBuffer.push({ role: "assistant", text: msg.text, timestamp: Date.now() });
-        // Runtime auth fallback (Tier 2): The CLI sends "Not logged in · Please
+        // Runtime auth fallback: The CLI sends "Not logged in · Please
         // run /login" as a text message (not an error), then exits with code 1.
         // Detect it here and switch to the setup screen immediately.
-        if (this.isAuthError(msg.text)) {
+        if (this.conversationalAgent?.isAuthError(msg.text)) {
           debug("Auth error in SDK text — switching to setup screen");
-          this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: false });
+          this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: false, setupInfo: this.conversationalAgent.getSetupInfo() });
         }
         break;
       case "sdk-tool-call":
@@ -488,8 +487,8 @@ export class ChatPanel {
       case "sdk-done":
         this.flushMessageBuffer();
         // Update session ID from SDK if available
-        if (this.sdkConversation?.sessionId && this.activeSessionId) {
-          const sdkId = this.sdkConversation.sessionId;
+        if (this.conversation?.sessionId && this.activeSessionId) {
+          const sdkId = this.conversation.sessionId;
           if (sdkId !== this.activeSessionId) {
             this.sessionStore.updateSessionId(this.activeSessionId, sdkId);
             this.activeSessionId = sdkId;
@@ -502,12 +501,12 @@ export class ChatPanel {
       case "sdk-error":
         this.messageBuffer.push({ role: "error", text: msg.text, timestamp: Date.now() });
         this.flushMessageBuffer();
-        // Runtime auth fallback (Tier 2): The CLI's auth error ("Not logged in")
+        // Runtime auth fallback: The CLI's auth error ("Not logged in")
         // arrives here as a streamed sdk-error, not as a thrown exception. Detect
         // it and switch to the setup screen so the user can re-authenticate.
-        if (this.isAuthError(msg.text)) {
+        if (this.conversationalAgent?.isAuthError(msg.text)) {
           debug("Auth error in SDK stream — switching to setup screen");
-          this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: false });
+          this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: false, setupInfo: this.conversationalAgent.getSetupInfo() });
         }
         break;
     }
@@ -526,9 +525,9 @@ export class ChatPanel {
    *  so the next follow-up message resumes the conversation with full context. */
   private async handleOpenSession(sessionId: string): Promise<void> {
     // Cancel any active conversation
-    if (this.sdkConversation) {
-      this.sdkConversation.cancel();
-      this.sdkConversation = null;
+    if (this.conversation) {
+      this.conversation.cancel();
+      this.conversation = null;
     }
 
     const data = this.sessionStore.getSession(sessionId);
@@ -546,9 +545,9 @@ export class ChatPanel {
   }
 
   private handleNewConversation(): void {
-    if (this.sdkConversation) {
-      this.sdkConversation.cancel();
-      this.sdkConversation = null;
+    if (this.conversation) {
+      this.conversation.cancel();
+      this.conversation = null;
     }
     this.activeSessionId = null;
     this.messageBuffer = [];
@@ -560,10 +559,10 @@ export class ChatPanel {
    *  continue the conversation — the SDK session ID is preserved so the
    *  agent picks up where it left off with full prior context. */
   private handleCancel() {
-    if (this.sdkConversation) {
-      const sessionId = this.sdkConversation.sessionId;
-      this.sdkConversation.cancel();
-      this.sdkConversation = null;
+    if (this.conversation) {
+      const sessionId = this.conversation.sessionId;
+      this.conversation.cancel();
+      this.conversation = null;
 
       // Save any partial messages accumulated before the cancel
       this.flushMessageBuffer();
@@ -580,18 +579,17 @@ export class ChatPanel {
     }
   }
 
-  /** Creates a new SDK conversation pre-loaded with the given session ID
+  /** Creates a new conversation pre-loaded with the given session ID
    *  so the next follow-up message resumes with full prior context. */
   private recreateConversationForResume(sessionId: string): void {
     const config = this.getConfig();
     const provider = this.registry.getBusinessContext(config.contextProvider);
     const folders = vscode.workspace.workspaceFolders;
+    const agent = this.conversationalAgent ?? this.registry.getConversationalAgent(config.codingAgent);
 
-    if (provider?.isConfigured() && folders && folders.length > 0) {
-      if (!this.sdkAgent) {
-        this.sdkAgent = new ClaudeSDKAgent();
-      }
-      this.sdkConversation = this.sdkAgent.createConversationForResume(
+    if (agent && provider?.isConfigured() && folders && folders.length > 0) {
+      this.conversationalAgent = agent;
+      this.conversation = agent.createConversationForResume(
         {
           provider,
           workspaceName: folders[0].name,
@@ -624,70 +622,47 @@ export class ChatPanel {
   }
 
   /**
-   * Checks if the Claude Code CLI is installed and authenticated, then
-   * sends the result to the webview. The webview decides what to show
-   * based on the result (setup screen vs. normal chat).
-   *
-   * We use isAvailable() (spawns `claude --version` with shell:true) as
-   * the primary check because it works regardless of how Claude was
-   * installed — npm, brew, winget, installer, scoop, etc. The shell
-   * resolves the command from PATH on all platforms.
-   *
-   * getClaudeBinaryPath() only finds npm-installed binaries on Windows
-   * (and uses `which` which doesn't exist on Windows), so it's unreliable
-   * as a cross-platform install check. It's still used as an optimization
-   * for passing `pathToClaudeCodeExecutable` to the SDK during queries.
+   * Checks if the configured conversational agent's CLI is installed and
+   * authenticated, then sends the result to the webview. The webview decides
+   * what to show based on the result (setup screen vs. normal chat).
    */
   private async checkSetupStatus(): Promise<void> {
-    if (!this.sdkAgent) {
-      this.sdkAgent = new ClaudeSDKAgent();
+    const config = this.getConfig();
+    const agent = this.registry.getConversationalAgent(config.codingAgent);
+
+    if (!agent) {
+      // No conversational agent configured — skip setup check (pipeline agents
+      // don't need CLI detection; they're checked at query time).
+      this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: true });
+      return;
     }
 
-    // Reset binary cache so "Check Again" picks up a freshly installed CLI.
-    this.sdkAgent.resetBinaryCache();
+    this.conversationalAgent = agent;
 
-    // isAvailable() runs `claude --version` with the user's login shell,
-    // which works on Unix and Windows regardless of install method.
-    const cliInstalled = await this.sdkAgent.isAvailable();
-    debug(`checkSetupStatus: cliInstalled=${cliInstalled}`);
+    // Reset cached state so "Check Again" picks up a freshly installed CLI.
+    agent.resetCache();
 
-    // Auth check: spawn a minimal SDK query and call accountInfo().
-    // This is the only cross-platform way to verify auth — macOS stores
-    // credentials in Keychain (no file to check), Linux/Windows use a file
-    // but we don't want to depend on internal storage details.
+    const cliInstalled = await agent.isAvailable();
+    debug(`checkSetupStatus: agent=${agent.displayName} cliInstalled=${cliInstalled}`);
+
     let cliAuthenticated = false;
     if (cliInstalled) {
-      cliAuthenticated = await this.sdkAgent.isAuthenticated();
+      cliAuthenticated = await agent.isAuthenticated();
       debug(`checkSetupStatus: cliAuthenticated=${cliAuthenticated}`);
     }
 
-    this.post({ type: "setup-status", cliInstalled, cliAuthenticated });
+    this.post({ type: "setup-status", cliInstalled, cliAuthenticated, setupInfo: agent.getSetupInfo() });
   }
 
-  /** Checks if an error or message text looks like a Claude CLI authentication
-   *  failure. Accepts either an Error object or a plain string.
-   *  Used as a runtime fallback (Tier 2) — if credentials expire between the
-   *  initial setup check and an actual query, we catch it here and show the
-   *  setup screen instead of a cryptic error.
-   *
-   *  IMPORTANT: These patterns must be specific to Claude CLI auth errors.
-   *  Generic words like "authentication" or "unauthorized" match Slack API
-   *  errors too, which would falsely kick users to the setup screen. */
-  private isAuthError(errOrText: any): boolean {
-    const msg = (typeof errOrText === "string" ? errOrText : errOrText?.message || "").toLowerCase();
-    return (
-      msg.includes("not logged in") ||
-      msg.includes("/login") ||
-      msg.includes("please run claude login")
-    );
-  }
-
-  /** Opens a VS Code integrated terminal and runs `claude` to trigger
-   *  the browser-based OAuth flow. */
+  /** Opens a VS Code integrated terminal and runs the agent's setup command
+   *  to trigger authentication (e.g. `claude` for Claude, `codex --auth` for Codex). */
   private openSetupTerminal(): void {
-    const terminal = vscode.window.createTerminal({ name: "Claude Setup" });
+    const agent = this.conversationalAgent;
+    const command = agent?.getSetupCommand() ?? "claude";
+    const name = agent?.getSetupInfo().displayName ?? "Agent";
+    const terminal = vscode.window.createTerminal({ name: `${name} Setup` });
     terminal.show();
-    terminal.sendText("claude");
+    terminal.sendText(command);
   }
 
   /** Checks Slack connection status and sends it to the webview. */

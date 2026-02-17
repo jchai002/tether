@@ -250,6 +250,7 @@ export function appReducer(state: AppState, action: Action): AppState {
         setupStatus: {
           cliInstalled: action.cliInstalled,
           cliAuthenticated: action.cliAuthenticated,
+          setupInfo: action.setupInfo,
         },
       };
 

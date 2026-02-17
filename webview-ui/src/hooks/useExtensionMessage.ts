@@ -93,6 +93,7 @@ export function useExtensionMessage() {
             type: "ext/setup-status",
             cliInstalled: msg.cliInstalled,
             cliAuthenticated: msg.cliAuthenticated,
+            setupInfo: msg.setupInfo,
           });
           break;
 

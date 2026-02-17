@@ -22,6 +22,7 @@ import { execSync, spawn as nodeSpawn } from "child_process";
 import * as path from "path";
 import * as fs from "fs";
 import type { BusinessContextProvider } from "../../businessContextProvider";
+import type { ConversationalAgent, AgentConversation, AgentSetupInfo, ConversationOptions, OnAgentMessage } from "../../conversationalAgent";
 import { createSearchTool, createGetThreadTool, getToolNames } from "./mcpTools";
 import { buildSystemPrompt } from "./systemPrompt";
 import type { ExtensionToWebviewMessage } from "../../../chat/messages";
@@ -110,38 +111,6 @@ function findClaudeBinary(): string | undefined {
   }
 }
 
-export interface SDKAgentOptions {
-  provider: BusinessContextProvider;
-  workspaceName: string;
-  workingDirectory: string;
-  /** Controls what Claude can do without asking:
-   *  "default" = ask for everything, "acceptEdits" = auto-approve file edits,
-   *  "bypassPermissions" = approve everything (YOLO mode) */
-  permissionMode?: "default" | "acceptEdits" | "bypassPermissions";
-}
-
-/** Represents an active conversation with Claude. Created by ClaudeSDKAgent. */
-export interface SDKConversation {
-  /** Start a new conversation with the given message. */
-  start(userMessage: string): Promise<void>;
-  /** Continue an existing conversation. Uses SDK's `resume` to maintain history. */
-  followUp(userMessage: string): Promise<void>;
-  cancel(): void;
-  /** Called when the user clicks Allow/Deny on a permission prompt in the webview. */
-  handlePermissionResponse(requestId: string, behavior: "allow" | "deny"): void;
-  /** Called when the user answers an AskUserQuestion prompt in the webview.
-   *  Injects their answers into the tool input via `updatedInput` and allows execution. */
-  handleUserQuestionResponse(requestId: string, answers: Record<string, string>): void;
-  /** Updates the permission mode for subsequent queries. Called when the user
-   *  toggles the permission mode in the UI mid-conversation. */
-  setPermissionMode(mode: "default" | "acceptEdits" | "bypassPermissions"): void;
-  /** Called when the user responds to a plan review (accept/reject/feedback). */
-  handlePlanReviewResponse(requestId: string, action: string): void;
-  readonly isRunning: boolean;
-  /** The SDK-assigned session ID. Null until the first response arrives. */
-  readonly sessionId: string | null;
-}
-
 /**
  * Factory that creates SDK conversations. Caches expensive resources that
  * don't change between conversations:
@@ -149,7 +118,7 @@ export interface SDKConversation {
  * - MCP server + tools (reused as long as the provider hasn't changed)
  * - System prompt (reused as long as the workspace hasn't changed)
  */
-export class ClaudeSDKAgent {
+export class ClaudeSDKAgent implements ConversationalAgent {
   readonly id = "claude-sdk";
   readonly displayName = "Claude Code (SDK)";
 
@@ -165,12 +134,35 @@ export class ClaudeSDKAgent {
   private cachedSystemPrompt: string | null = null;
   private cachedSystemPromptKey: string | null = null;
 
-  /** Clears the cached binary path so the next getClaudeBinaryPath() call
-   *  re-runs the detection. Called when the user clicks "Check Again" on the
-   *  setup screen — they may have just installed the CLI. */
-  resetBinaryCache(): void {
+  // ── ConversationalAgent interface methods ──────────────────
+
+  getSetupInfo(): AgentSetupInfo {
+    return {
+      displayName: "Claude Code",
+      installCommand: "npm install -g @anthropic-ai/claude-code",
+      cliBinaryName: "claude",
+    };
+  }
+
+  getSetupCommand(): string {
+    return "claude";
+  }
+
+  resetCache(): void {
     this.binaryPathResolved = false;
     this.cachedBinaryPath = undefined;
+  }
+
+  /** Checks if an error message looks like a Claude CLI auth failure.
+   *  Patterns must be specific to Claude — generic words like "unauthorized"
+   *  would falsely match Slack API errors. */
+  isAuthError(text: string): boolean {
+    const msg = text.toLowerCase();
+    return (
+      msg.includes("not logged in") ||
+      msg.includes("/login") ||
+      msg.includes("please run claude login")
+    );
   }
 
   /**
@@ -280,8 +272,9 @@ export class ClaudeSDKAgent {
     }
   }
 
-  /** Returns the cached binary path, resolving it only on the first call. */
-  getClaudeBinaryPath(): string | undefined {
+  /** Returns the cached binary path, resolving it only on the first call.
+   *  Internal — used as an optimization for pathToClaudeCodeExecutable in queries. */
+  private getClaudeBinaryPath(): string | undefined {
     if (!this.binaryPathResolved) {
       this.cachedBinaryPath = findClaudeBinary();
       this.binaryPathResolved = true;
@@ -289,8 +282,9 @@ export class ClaudeSDKAgent {
     return this.cachedBinaryPath;
   }
 
-  /** Returns a cached MCP server, re-creating only if the provider changed. */
-  getMcpServer(provider: BusinessContextProvider): ReturnType<typeof createSdkMcpServer> {
+  /** Returns a cached MCP server, re-creating only if the provider changed.
+   *  Internal — called by SDKConversationImpl to inject tools into queries. */
+  private getMcpServer(provider: BusinessContextProvider): ReturnType<typeof createSdkMcpServer> {
     if (this.cachedMcpServer && this.cachedProviderId === provider.id) {
       return this.cachedMcpServer;
     }
@@ -304,8 +298,9 @@ export class ClaudeSDKAgent {
     return this.cachedMcpServer;
   }
 
-  /** Returns a cached system prompt, re-creating only if workspace or provider changed. */
-  getSystemPrompt(workspaceName: string, providerName: string): string {
+  /** Returns a cached system prompt, re-creating only if workspace or provider changed.
+   *  Internal — called by SDKConversationImpl for query options. */
+  private getSystemPrompt(workspaceName: string, providerName: string): string {
     const key = `${workspaceName}::${providerName}`;
     if (this.cachedSystemPrompt && this.cachedSystemPromptKey === key) {
       return this.cachedSystemPrompt;
@@ -317,9 +312,9 @@ export class ClaudeSDKAgent {
 
   /** Creates a new conversation. The first call to start() begins a fresh session. */
   createConversation(
-    options: SDKAgentOptions,
-    onMessage: (msg: ExtensionToWebviewMessage) => void
-  ): SDKConversation {
+    options: ConversationOptions,
+    onMessage: OnAgentMessage,
+  ): AgentConversation {
     return new SDKConversationImpl(options, onMessage, this);
   }
 
@@ -327,10 +322,10 @@ export class ClaudeSDKAgent {
    *  Used when restoring a past session — the next followUp() will
    *  pass `resume: sessionId` so Claude has the full prior context. */
   createConversationForResume(
-    options: SDKAgentOptions,
-    onMessage: (msg: ExtensionToWebviewMessage) => void,
-    existingSessionId: string
-  ): SDKConversation {
+    options: ConversationOptions,
+    onMessage: OnAgentMessage,
+    existingSessionId: string,
+  ): AgentConversation {
     return new SDKConversationImpl(options, onMessage, this, existingSessionId);
   }
 }
@@ -342,7 +337,7 @@ export class ClaudeSDKAgent {
  * - Permission request/response flow between Claude and the webview UI
  * - Session tracking for conversation resume
  */
-class SDKConversationImpl implements SDKConversation {
+class SDKConversationImpl implements AgentConversation {
   private _isRunning = false;
   /** Set by cancel() so the catch block in sendQuery() knows the abort was
    *  intentional and can suppress the error (not all abort errors have
@@ -364,8 +359,8 @@ class SDKConversationImpl implements SDKConversation {
   >();
 
   constructor(
-    private options: SDKAgentOptions,
-    private onMessage: (msg: ExtensionToWebviewMessage) => void,
+    private options: ConversationOptions,
+    private onMessage: OnAgentMessage,
     /** Parent agent — holds cached MCP server, binary path, and system prompt
      *  so they're resolved once and reused across conversations. */
     private agent: ClaudeSDKAgent,
