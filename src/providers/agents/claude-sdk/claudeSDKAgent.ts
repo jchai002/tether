@@ -112,7 +112,7 @@ function findClaudeBinary(): string | undefined {
 }
 
 /**
- * Factory that creates SDK conversations. Caches expensive resources that
+ * Claude SDK agent — creates Claude conversations. Caches expensive resources that
  * don't change between conversations:
  * - Claude binary path (avoids `execSync` on every conversation)
  * - MCP server + tools (reused as long as the provider hasn't changed)
@@ -283,7 +283,7 @@ export class ClaudeSDKAgent implements ConversationalAgent {
   }
 
   /** Returns a cached MCP server, re-creating only if the provider changed.
-   *  Internal — called by SDKConversationImpl to inject tools into queries. */
+   *  Internal — called by ClaudeConversationImpl to inject tools into queries. */
   private getMcpServer(provider: BusinessContextProvider): ReturnType<typeof createSdkMcpServer> {
     if (this.cachedMcpServer && this.cachedProviderId === provider.id) {
       return this.cachedMcpServer;
@@ -299,7 +299,7 @@ export class ClaudeSDKAgent implements ConversationalAgent {
   }
 
   /** Returns a cached system prompt, re-creating only if workspace or provider changed.
-   *  Internal — called by SDKConversationImpl for query options. */
+   *  Internal — called by ClaudeConversationImpl for query options. */
   private getSystemPrompt(workspaceName: string, providerName: string): string {
     const key = `${workspaceName}::${providerName}`;
     if (this.cachedSystemPrompt && this.cachedSystemPromptKey === key) {
@@ -315,7 +315,7 @@ export class ClaudeSDKAgent implements ConversationalAgent {
     options: ConversationOptions,
     onMessage: OnAgentMessage,
   ): AgentConversation {
-    return new SDKConversationImpl(options, onMessage, this);
+    return new ClaudeConversationImpl(options, onMessage, this);
   }
 
   /** Creates a conversation pre-loaded with an existing session ID.
@@ -326,7 +326,7 @@ export class ClaudeSDKAgent implements ConversationalAgent {
     onMessage: OnAgentMessage,
     existingSessionId: string,
   ): AgentConversation {
-    return new SDKConversationImpl(options, onMessage, this, existingSessionId);
+    return new ClaudeConversationImpl(options, onMessage, this, existingSessionId);
   }
 }
 
@@ -337,7 +337,7 @@ export class ClaudeSDKAgent implements ConversationalAgent {
  * - Permission request/response flow between Claude and the webview UI
  * - Session tracking for conversation resume
  */
-class SDKConversationImpl implements AgentConversation {
+class ClaudeConversationImpl implements AgentConversation {
   private _isRunning = false;
   /** Set by cancel() so the catch block in sendQuery() knows the abort was
    *  intentional and can suppress the error (not all abort errors have

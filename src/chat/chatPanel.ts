@@ -9,7 +9,7 @@
  * - Creates and manages the webview panel (the chat tab in VS Code)
  * - Routes messages from the webview to the right handler
  * - Sends messages back to the webview for rendering
- * - Manages SDK conversations and buffers messages for session persistence
+ * - Manages agent conversations and buffers messages for session persistence
  *
  * Two code paths exist:
  * - Conversational path: If the configured agent is registered as a
@@ -442,8 +442,8 @@ export class ChatPanel {
     this.post({ type: "status", text: "" });
   }
 
-  /** Intercepts every message from the SDK conversation. Two jobs:
-   *  1. Converts SDK messages into StoredMessages and buffers them
+  /** Intercepts every message from the conversational agent. Two jobs:
+   *  1. Converts agent messages into StoredMessages and buffers them
    *  2. Forwards the original message to the webview for live rendering
    *  On sdk-done, flushes the buffer to the SessionStore for persistence. */
   private bufferAndForward(msg: ExtensionToWebviewMessage): void {
@@ -454,7 +454,7 @@ export class ChatPanel {
         // run /login" as a text message (not an error), then exits with code 1.
         // Detect it here and switch to the setup screen immediately.
         if (this.conversationalAgent?.isAuthError(msg.text)) {
-          debug("Auth error in SDK text — switching to setup screen");
+          debug("Auth error in agent text — switching to setup screen");
           this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: false, setupInfo: this.conversationalAgent.getSetupInfo() });
         }
         break;
@@ -486,12 +486,12 @@ export class ChatPanel {
         break;
       case "sdk-done":
         this.flushMessageBuffer();
-        // Update session ID from SDK if available
+        // Update session ID from agent if available
         if (this.conversation?.sessionId && this.activeSessionId) {
-          const sdkId = this.conversation.sessionId;
-          if (sdkId !== this.activeSessionId) {
-            this.sessionStore.updateSessionId(this.activeSessionId, sdkId);
-            this.activeSessionId = sdkId;
+          const agentSessionId = this.conversation.sessionId;
+          if (agentSessionId !== this.activeSessionId) {
+            this.sessionStore.updateSessionId(this.activeSessionId, agentSessionId);
+            this.activeSessionId = agentSessionId;
           }
         }
         break;
@@ -505,7 +505,7 @@ export class ChatPanel {
         // arrives here as a streamed sdk-error, not as a thrown exception. Detect
         // it and switch to the setup screen so the user can re-authenticate.
         if (this.conversationalAgent?.isAuthError(msg.text)) {
-          debug("Auth error in SDK stream — switching to setup screen");
+          debug("Auth error in agent stream — switching to setup screen");
           this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: false, setupInfo: this.conversationalAgent.getSetupInfo() });
         }
         break;
@@ -521,7 +521,7 @@ export class ChatPanel {
   }
 
   /** Restores a past session: loads stored messages, sends them to the webview
-   *  for rendering, and pre-creates an SDK conversation with the session ID
+   *  for rendering, and pre-creates an agent conversation with the session ID
    *  so the next follow-up message resumes the conversation with full context. */
   private async handleOpenSession(sessionId: string): Promise<void> {
     // Cancel any active conversation
@@ -540,7 +540,7 @@ export class ChatPanel {
     this.messageBuffer = [];
     this.post({ type: "session-opened", meta: data.meta, messages: data.messages });
 
-    // Pre-create SDK conversation with existing session ID for resume
+    // Pre-create conversation with existing session ID for resume
     this.recreateConversationForResume(sessionId);
   }
 
@@ -556,7 +556,7 @@ export class ChatPanel {
 
   /** Cancels the active agent query and prepares the conversation for resume.
    *  After cancelling, the user can type a natural language follow-up to
-   *  continue the conversation — the SDK session ID is preserved so the
+   *  continue the conversation — the agent session ID is preserved so the
    *  agent picks up where it left off with full prior context. */
   private handleCancel() {
     if (this.conversation) {
@@ -569,7 +569,7 @@ export class ChatPanel {
 
       // Re-create the conversation so the user can follow up after cancel.
       // Without this, handleFollowUp() would fail with "no active conversation"
-      // because cancel() sets sdkConversation to null.
+      // because cancel() sets conversation to null.
       if (sessionId && this.activeSessionId) {
         this.recreateConversationForResume(sessionId);
       }
