@@ -1354,6 +1354,107 @@ body {
   color: var(--vscode-foreground, #abb2bf);
 }
 
+/* ── Business Context Drop-Up Menu ──────────────────────────── */
+/* Compact toolbar button + drop-up popup for connecting providers */
+
+.biz-ctx-wrapper {
+  position: relative;
+}
+
+.biz-ctx-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  color: var(--vscode-descriptionForeground, #858585);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  transition: color 0.15s;
+}
+.biz-ctx-trigger:hover {
+  color: var(--vscode-foreground, #cccccc);
+  background: var(--vscode-toolbar-hoverBackground, rgba(255, 255, 255, 0.06));
+}
+
+.biz-ctx-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.biz-ctx-popup {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 280px;
+  background: var(--vscode-dropdown-background, #252526);
+  border: 1px solid var(--vscode-panel-border, #333);
+  border-radius: 6px;
+  padding: 6px 0;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.biz-ctx-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+.biz-ctx-row + .biz-ctx-row {
+  border-top: 1px solid var(--vscode-panel-border, #333);
+}
+
+.biz-ctx-icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  color: var(--vscode-descriptionForeground, #858585);
+}
+
+.biz-ctx-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.biz-ctx-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--vscode-foreground, #cccccc);
+}
+
+.biz-ctx-status {
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground, #858585);
+}
+.biz-ctx-status.connected {
+  color: var(--vscode-terminal-ansiGreen, #4d9375);
+}
+
+.biz-ctx-action {
+  flex-shrink: 0;
+}
+
+/* Disabled button variant for "Coming soon" stubs */
+.provider-btn-disabled {
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  border: 1px solid var(--vscode-panel-border, #3e4451);
+  background: transparent;
+  color: var(--vscode-disabledForeground, #5c6370);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* ── Slash command menu ─────────────────────────────────────── */
 /* Popup that appears above the input area when user types "/" */
 

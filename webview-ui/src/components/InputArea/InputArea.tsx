@@ -24,6 +24,7 @@ import { usePostMessage } from "../../hooks/usePostMessage";
 import { PermissionToggle } from "../PermissionToggle";
 import { ContextUsage } from "../ContextUsage";
 import { SlashCommandMenu } from "./SlashCommandMenu";
+import { BusinessContextMenu } from "./BusinessContextMenu";
 
 export function InputArea() {
   const { state, dispatch } = useExtensionState();
@@ -133,6 +134,7 @@ export function InputArea() {
         <div className="input-toolbar-left">
           <PermissionToggle />
           <ContextUsage />
+          <BusinessContextMenu />
         </div>
         <div className="input-toolbar-right">
           {state.busy ? (

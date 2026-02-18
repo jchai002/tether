@@ -17,7 +17,7 @@ import { useAutoScroll } from "./hooks/useAutoScroll";
 import { Header } from "./components/Header";
 import { SetupScreen } from "./components/SetupScreen";
 import { WelcomeScreen } from "./components/WelcomeScreen";
-import { ProviderConnection } from "./components/ProviderConnection";
+
 import { StatusBar } from "./components/StatusBar";
 import { MessageList } from "./components/MessageList/MessageList";
 import { InputArea } from "./components/InputArea/InputArea";
@@ -51,7 +51,6 @@ function AppContent() {
   return (
     <>
       <Header />
-      {!setupNeeded && <ProviderConnection />}
       <div id="messages" ref={scrollRef}>
         {setupNeeded ? (
           <SetupScreen />
