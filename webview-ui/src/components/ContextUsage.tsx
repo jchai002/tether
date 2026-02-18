@@ -17,21 +17,29 @@ export function ContextUsage() {
   if (!contextWindow) return null;
 
   const used = inputTokens + outputTokens;
-  const pct = Math.min(100, Math.round((used / contextWindow) * 100));
+  const rawPct = Math.min(100, (used / contextWindow) * 100);
+
+  // Show 1 decimal place under 10% for granularity, round above 10%.
+  // Show "<1%" instead of "0%" so users can tell it's tracking.
+  const label = rawPct > 0 && rawPct < 1
+    ? "<1%"
+    : rawPct < 10
+      ? `${rawPct.toFixed(1)}%`
+      : `${Math.round(rawPct)}%`;
 
   // Color: green below 50%, yellow 50-80%, red above 80%
   const color =
-    pct < 50 ? "var(--vscode-terminal-ansiGreen, #4d9375)"
-    : pct < 80 ? "var(--vscode-terminal-ansiYellow, #e5c07b)"
+    rawPct < 50 ? "var(--vscode-terminal-ansiGreen, #4d9375)"
+    : rawPct < 80 ? "var(--vscode-terminal-ansiYellow, #e5c07b)"
     : "var(--vscode-terminal-ansiRed, #e06c75)";
 
   return (
     <span
       className="context-usage"
-      title={`Context: ${used.toLocaleString()} / ${contextWindow.toLocaleString()} tokens (${pct}% used)`}
+      title={`Context: ${used.toLocaleString()} / ${contextWindow.toLocaleString()} tokens (${rawPct.toFixed(1)}% used)`}
       style={{ color }}
     >
-      {pct}%
+      {label}
     </span>
   );
 }

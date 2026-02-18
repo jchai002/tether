@@ -798,10 +798,15 @@ class ClaudeConversationImpl implements AgentConversation {
               this._sessionId = msg.session_id;
             }
 
-            // Extract context window usage from modelUsage — pick the first
-            // model's data (there's usually only one model per conversation).
+            // Extract context window usage from modelUsage. The SDK reports
+            // per-model usage (e.g. Opus for the main conversation, Haiku for
+            // sub-agents). Pick the model with the most input tokens — that's the
+            // primary conversation model whose context window matters to the user.
             const modelUsages = msg.modelUsage ? Object.values(msg.modelUsage) : [];
-            const mu = modelUsages[0];
+            const mu = modelUsages.length > 1
+              ? modelUsages.reduce((best, cur) => cur.inputTokens > best.inputTokens ? cur : best)
+              : modelUsages[0];
+            console.log(`[Conduit] result modelUsage: ${modelUsages.length} models, primary=${mu?.inputTokens ?? 0} input / ${mu?.contextWindow ?? 0} window`);
 
             const successResult = msg.subtype === "success" ? msg.result : undefined;
             this.onMessage({
