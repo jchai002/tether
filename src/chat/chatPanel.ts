@@ -392,6 +392,12 @@ export class ChatPanel {
           debug("Auth error in agent stream — switching to setup screen");
           this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: false, setupInfo: this.codingAgent.getSetupInfo() });
         }
+        // Recreate the conversation after unrecoverable errors (content filter,
+        // exit code 1, etc.). The old conversation object has stale internal state
+        // that causes follow-ups to fail. Recreating with the same session ID lets
+        // the CLI resume cleanly — it skips the failed turn on next resume.
+        // Same pattern as handleCancel() which also recreates after aborting.
+        this.recreateConversationAfterError();
         break;
     }
     this.post(msg);
@@ -484,6 +490,20 @@ export class ChatPanel {
         (msg) => this.bufferAndForward(msg),
         sessionId,
       );
+    }
+  }
+
+  /** Replaces the current conversation with a fresh one after an unrecoverable
+   *  error (content filter, CLI crash, etc.). Uses the same session ID so the
+   *  CLI can resume cleanly — it skips the failed turn on next resume.
+   *  Without this, the stale conversation object would keep failing on follow-ups
+   *  until Conduit is restarted. */
+  private recreateConversationAfterError(): void {
+    const sessionId = this.conversation?.sessionId;
+    this.conversation = null;
+    if (sessionId && this.activeSessionId) {
+      debug(`Recreating conversation after error, sessionId=${sessionId}`);
+      this.recreateConversationForResume(sessionId);
     }
   }
 
