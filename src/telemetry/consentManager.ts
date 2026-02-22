@@ -66,7 +66,13 @@ export class ConsentManager {
     if (this.messageCount < this.triggerAfterMessages) return;
 
     this.promptShownThisSession = true;
+    await this.showPrompt();
+  }
 
+  /** Shows the consent notification with three options. Called from
+   *  maybeShowPrompt() and recursively after "What's collected?" so the
+   *  user can still Enable or dismiss after reading the telemetry doc. */
+  private async showPrompt(): Promise<void> {
     const choice = await vscode.window.showInformationMessage(
       "Help improve Conduit? We'd collect anonymous usage patterns and AI responses " +
       "to train better context search. Never your Slack messages.",
@@ -76,8 +82,9 @@ export class ConsentManager {
     );
 
     if (choice === "Enable") {
-      await vscode.workspace.getConfiguration("businessContext")
-        .update("telemetry.syncEnabled", true, vscode.ConfigurationTarget.Global);
+      const config = vscode.workspace.getConfiguration("businessContext");
+      await config.update("telemetry.enabled", true, vscode.ConfigurationTarget.Global);
+      await config.update("telemetry.syncEnabled", true, vscode.ConfigurationTarget.Global);
     } else if (choice === "What's collected?") {
       // Open the user-facing telemetry doc so they can read what's collected
       const docUri = vscode.Uri.joinPath(
@@ -90,10 +97,10 @@ export class ConsentManager {
         const doc = await vscode.workspace.openTextDocument(docUri);
         await vscode.window.showTextDocument(doc);
       }
-      // Re-show a follow-up prompt so the user can still Enable or dismiss
+      // Re-show the same prompt so the user can still Enable or dismiss
       // after reading. VS Code notifications are one-shot — clicking any
       // button dismisses them.
-      await this.showEnablePrompt();
+      await this.showPrompt();
     } else if (choice === "No thanks") {
       // Explicit rejection — stop local logging and remember permanently
       this.dataCollector.disable();
@@ -101,24 +108,5 @@ export class ConsentManager {
     }
     // else: undefined = notification timed out or was closed via X.
     // Don't mark as dismissed — re-show next session (new VS Code window).
-  }
-
-  /** Simplified follow-up prompt shown after the user reads the telemetry doc.
-   *  Two choices only — they've already seen the full explanation. */
-  private async showEnablePrompt(): Promise<void> {
-    const choice = await vscode.window.showInformationMessage(
-      "Enable anonymous data collection for Conduit?",
-      "Enable",
-      "No thanks",
-    );
-
-    if (choice === "Enable") {
-      await vscode.workspace.getConfiguration("businessContext")
-        .update("telemetry.syncEnabled", true, vscode.ConfigurationTarget.Global);
-    } else if (choice === "No thanks") {
-      this.dataCollector.disable();
-      await this.context.globalState.update(DISMISSED_KEY, true);
-    }
-    // else: timed out / closed — re-show next session
   }
 }

@@ -39,7 +39,16 @@ export function activate(context: vscode.ExtensionContext) {
   // "No thanks", disable logging on startup (they can re-enable via settings).
   const dataCollector = new DataCollector();
   if (context.globalState.get<boolean>("conduit.telemetry.dismissed")) {
-    dataCollector.disable();
+    // User previously clicked "No thanks" — but check if they manually
+    // re-enabled via settings since then (the config listener only fires
+    // on changes, not on startup).
+    const manuallyEnabled = vscode.workspace.getConfiguration("businessContext")
+      .get<boolean>("telemetry.enabled", false);
+    if (manuallyEnabled) {
+      context.globalState.update("conduit.telemetry.dismissed", undefined);
+    } else {
+      dataCollector.disable();
+    }
   }
   const consentManager = new ConsentManager(context, dataCollector);
 

@@ -324,6 +324,13 @@ export class ChatPanel {
     }
 
     this.messageBuffer.push({ role: "user", text, timestamp: Date.now() });
+
+    // Start a new telemetry session for the follow-up — the previous session
+    // ended on sdk-done, so currentSessionId is null at this point.
+    this.dataCollector.startSession({
+      model: this.currentModel ?? "default",
+      permissionMode: this.permissionMode,
+    });
     this.dataCollector.recordUserFollowup(text.length);
 
     this.post({ type: "status", text: "Thinking..." });
