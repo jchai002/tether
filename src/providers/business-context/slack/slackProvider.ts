@@ -5,6 +5,14 @@ import { BusinessContextProvider } from "../../businessContextProvider";
 import { Message, Thread, SearchOptions } from "../../types";
 import { SlackCache, SlackUser, SlackChannel } from "./slackCache";
 
+/** Conduit's unlisted Slack app client ID. Public value — not a secret.
+ *  The client secret lives on the Cloudflare Worker (set via wrangler secret). */
+const SLACK_CLIENT_ID = "10488515408532.10496099125142";
+
+/** Conduit's OAuth proxy URL. Handles the Slack token exchange server-side
+ *  so the client secret never touches the extension. */
+const OAUTH_PROXY_URL = "https://conduit-oauth.jchai002.workers.dev";
+
 export class SlackProvider implements BusinessContextProvider {
   readonly id = "slack";
   readonly displayName = "Slack";
@@ -94,16 +102,7 @@ export class SlackProvider implements BusinessContextProvider {
    * which VS Code's URI handler catches.
    */
   private getOAuthRedirectUri(): string {
-    const config = vscode.workspace.getConfiguration("businessContext.slack");
-    const proxyUrl = config.get<string>("oauthProxyUrl");
-    if (!proxyUrl) {
-      throw new Error(
-        "OAuth proxy URL not configured. Set businessContext.slack.oauthProxyUrl in settings. " +
-        "See docs/SLACK_SETUP.md for instructions."
-      );
-    }
-    // Normalize: strip trailing slash, append /slack-callback
-    return `${proxyUrl.replace(/\/+$/, "")}/slack-callback`;
+    return `${OAUTH_PROXY_URL}/slack-callback`;
   }
 
   /**
@@ -111,12 +110,7 @@ export class SlackProvider implements BusinessContextProvider {
    * Generates a random state nonce for CSRF protection.
    */
   async initiateOAuth(context: vscode.ExtensionContext): Promise<void> {
-    const config = vscode.workspace.getConfiguration("businessContext.slack");
-    const clientId = config.get<string>("clientId");
-
-    if (!clientId) {
-      throw new Error("Slack client ID not configured. Set businessContext.slack.clientId in settings.");
-    }
+    const clientId = SLACK_CLIENT_ID;
 
     const redirectUri = this.getOAuthRedirectUri();
 
@@ -151,17 +145,8 @@ export class SlackProvider implements BusinessContextProvider {
    * from the worker's /exchange endpoint using the state parameter.
    */
   async handleOAuthCallback(state: string): Promise<void> {
-    const config = vscode.workspace.getConfiguration("businessContext.slack");
-    const proxyUrl = config.get<string>("oauthProxyUrl");
-
-    if (!proxyUrl) {
-      throw new Error(
-        "OAuth proxy URL not configured. Set businessContext.slack.oauthProxyUrl in settings."
-      );
-    }
-
     // Fetch token from the worker's /exchange endpoint.
-    const exchangeUrl = `${proxyUrl.replace(/\/+$/, "")}/exchange?state=${encodeURIComponent(state)}`;
+    const exchangeUrl = `${OAUTH_PROXY_URL}/exchange?state=${encodeURIComponent(state)}`;
     const response = await fetch(exchangeUrl);
     const data = (await response.json()) as { ok: boolean; error?: string; userToken?: string; teamName?: string };
 

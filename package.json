@@ -76,18 +76,6 @@
           "description": "Slack User OAuth Token (xoxp-...). Required when using Slack as context provider.",
           "order": 10
         },
-        "businessContext.slack.clientId": {
-          "type": "string",
-          "default": "",
-          "description": "Slack app client ID for OAuth. Only set this to use your own Slack app — leave blank for the default Conduit app.",
-          "order": 11
-        },
-        "businessContext.slack.oauthProxyUrl": {
-          "type": "string",
-          "default": "",
-          "description": "HTTPS proxy URL for Slack OAuth (e.g. https://conduit-oauth.your-account.workers.dev). The proxy handles token exchange server-side. Leave blank for the default Conduit proxy.",
-          "order": 12
-        },
         "businessContext.telemetry.enabled": {
           "type": "boolean",
           "default": false,
