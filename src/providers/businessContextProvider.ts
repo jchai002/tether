@@ -1,4 +1,4 @@
-import { Message, Thread, SearchOptions, ResolvedUser, ResolvedChannel } from "./types";
+import { Message, Thread, SearchOptions, ResolvedUser } from "./types";
 
 /**
  * Interface for any business context source (Slack, Teams, Outlook, etc.).
@@ -17,7 +17,4 @@ export interface BusinessContextProvider {
    *  before searching with from: operators. Optional — not all providers support it. */
   resolveUser?(input: string): Promise<ResolvedUser[]>;
 
-  /** Fuzzy-match a name to platform channels. Used to resolve "dashi" → "all-dashi"
-   *  before searching with in: operators. Optional — not all providers support it. */
-  resolveChannel?(input: string): Promise<ResolvedChannel[]>;
 }
