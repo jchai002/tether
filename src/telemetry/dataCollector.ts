@@ -91,17 +91,17 @@ export class DataCollector {
   /** Full path to the sync state file — reset when data file is wiped. */
   private syncStatePath: string;
 
-  constructor() {
-    // Resolve paths
-    const dataDir = path.join(os.homedir(), ".conduit", "telemetry");
-    this.dataFilePath = path.join(dataDir, "sessions.jsonl");
-    this.syncStatePath = path.join(dataDir, "sync-state.json");
+  constructor(dataDir?: string) {
+    // Resolve paths — accept an optional override for testing.
+    const resolvedDir = dataDir ?? path.join(os.homedir(), ".conduit", "telemetry");
+    this.dataFilePath = path.join(resolvedDir, "sessions.jsonl");
+    this.syncStatePath = path.join(resolvedDir, "sync-state.json");
 
     // Ensure directory exists
-    fs.mkdirSync(dataDir, { recursive: true });
+    fs.mkdirSync(resolvedDir, { recursive: true });
 
     // Load or generate device ID
-    const deviceIdPath = path.join(dataDir, "device-id");
+    const deviceIdPath = path.join(resolvedDir, "device-id");
     try {
       this.deviceId = fs.readFileSync(deviceIdPath, "utf-8").trim();
     } catch {

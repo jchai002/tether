@@ -5,6 +5,7 @@ export const window = {
   showInformationMessage: async () => undefined,
   showErrorMessage: async () => undefined,
   showWarningMessage: async () => undefined,
+  withProgress: async (_options: any, task: any) => task(),
 };
 
 export const workspace = {
@@ -23,3 +24,5 @@ export class TreeItem {
 }
 
 export const ViewColumn = { One: 1 };
+
+export const ProgressLocation = { Notification: 15 };

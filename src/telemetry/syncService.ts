@@ -38,8 +38,8 @@ export class SyncService {
   private syncStatePath: string;
   private deviceIdPath: string;
 
-  constructor() {
-    this.dataDir = path.join(os.homedir(), ".conduit", "telemetry");
+  constructor(dataDir?: string) {
+    this.dataDir = dataDir ?? path.join(os.homedir(), ".conduit", "telemetry");
     this.dataFilePath = path.join(this.dataDir, "sessions.jsonl");
     this.syncStatePath = path.join(this.dataDir, "sync-state.json");
     this.deviceIdPath = path.join(this.dataDir, "device-id");
@@ -94,14 +94,14 @@ export class SyncService {
     }
   }
 
-  private isSyncEnabled(): boolean {
+  isSyncEnabled(): boolean {
     const config = vscode.workspace.getConfiguration("businessContext");
     return config.get<boolean>("telemetry.enabled", false) &&
            config.get<boolean>("telemetry.syncEnabled", false);
   }
 
   /** Core sync logic — reads new data and POSTs it to the Worker. */
-  private async performSync(): Promise<void> {
+  async performSync(): Promise<void> {
     // Read the data file — bail if it doesn't exist or is empty
     if (!fs.existsSync(this.dataFilePath)) return;
     const stat = fs.statSync(this.dataFilePath);
