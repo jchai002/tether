@@ -71,7 +71,7 @@ See [CONTRIBUTING.md](../CONTRIBUTING.md) for a step-by-step guide. Adding a pro
 - [x] MCP tools: `search_slack`, `get_slack_thread` (in-process, no separate server)
 - [x] CodingAgent abstraction (agent-agnostic chatPanel)
 - [x] Chat webview with tool call/result rendering and follow-ups
-- [ ] End-to-end testing with real Slack workspace
+- [x] End-to-end testing with real Slack workspace
 - [ ] VS Code marketplace publishing
 
 ### Phase 2: Multi-Platform

@@ -46,6 +46,7 @@ src/
 - Do NOT commit unless explicitly asked to.
 - Do NOT push unless explicitly asked to.
 - Commit messages: single line, no emojis, no bullet points.
+- **Test-driven development.** Write or update tests before implementing new logic. Run `npm test` to verify tests pass before considering a task complete. Tests live in `src/test/` (extension) and `webview-ui/src/test/` (webview).
 
 ## Code Conventions
 
