@@ -671,7 +671,9 @@ class ClaudeConversationImpl implements AgentConversation {
             : {}),
           // Model override — set via /model slash command. Omit to use CLI default.
           ...(this.options.model ? { model: this.options.model } : {}),
-          maxTurns: 20,
+          // No maxTurns limit — let the agent run until the task is done.
+          // The SDK compacts the context automatically when the window fills up,
+          // so long tasks work seamlessly without the user needing to re-prompt.
           // Binary path is cached on the agent — resolved once via execSync.
           ...(this.agent.getClaudeBinaryPath()
             ? { pathToClaudeCodeExecutable: this.agent.getClaudeBinaryPath() }
