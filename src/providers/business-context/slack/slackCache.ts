@@ -11,7 +11,9 @@ export interface SlackChannel {
   name: string;        // channel name without # (e.g. "backend")
 }
 
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+/** Users rarely rename — cache for 24 hours. Channels change more often (4 hours). */
+const USER_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const CHANNEL_CACHE_TTL_MS = 4 * 60 * 60 * 1000;
 
 export class SlackCache {
   private users: SlackUser[] = [];
@@ -22,7 +24,7 @@ export class SlackCache {
   constructor(private getClient: () => Promise<WebClient>) {}
 
   async getUsers(): Promise<SlackUser[]> {
-    if (Date.now() - this.usersLoadedAt < CACHE_TTL_MS && this.users.length > 0) {
+    if (Date.now() - this.usersLoadedAt < USER_CACHE_TTL_MS && this.users.length > 0) {
       return this.users;
     }
     await this.loadUsers();
@@ -30,11 +32,19 @@ export class SlackCache {
   }
 
   async getChannels(): Promise<SlackChannel[]> {
-    if (Date.now() - this.channelsLoadedAt < CACHE_TTL_MS && this.channels.length > 0) {
+    if (Date.now() - this.channelsLoadedAt < CHANNEL_CACHE_TTL_MS && this.channels.length > 0) {
       return this.channels;
     }
     await this.loadChannels();
     return this.channels;
+  }
+
+  /** Resolves a Slack user ID (e.g. "U0AG427DM4Z") to a display name.
+   *  Returns realName if available, falls back to username, then the raw ID. */
+  async resolveUserName(userId: string): Promise<string> {
+    const users = await this.getUsers();
+    const user = users.find((u) => u.id === userId);
+    return user?.realName || user?.name || userId;
   }
 
   async fuzzyMatchUser(input: string): Promise<SlackUser[]> {

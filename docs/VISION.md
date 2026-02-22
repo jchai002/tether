@@ -124,6 +124,6 @@ Cursor, Windsurf, and Devin are proprietary/closed with no embeddable SDK. Aider
 | MCP integration | In-process via `createSdkMcpServer()` | No separate stdio server needed; tools wrap ContextProvider directly |
 | Session management | SDK V1 `query()` with `resume` | SDK manages conversation history internally; supports multi-turn follow-ups |
 | Auth approach | CLI subprocess (user's subscription) | No per-token costs, users keep their existing AI subscriptions |
-| Slack auth | User OAuth Token (xoxp-) | `search.messages` requires user token, not bot token |
+| Slack auth | User OAuth Token (xoxp-) | Conduit sees Slack through the dev's eyes — user token gives search + full read access to everything the dev can see |
 | Architecture | Provider/adapter pattern | Anyone can add a platform without touching core code |
 | License | MIT | Maximum freedom for contributors and users |

@@ -24,8 +24,9 @@ export class SlackProvider implements BusinessContextProvider {
     this.cache = new SlackCache(() => this.getClient());
   }
 
-  isConfigured(): boolean {
-    return this.getToken() !== "";
+  async isConfigured(): Promise<boolean> {
+    const token = await this.getToken();
+    return !!token;
   }
 
   async configure(): Promise<void> {
@@ -64,7 +65,7 @@ export class SlackProvider implements BusinessContextProvider {
 
     const matches = (result.messages as any)?.matches ?? [];
 
-    return matches.map((match: any) => this.toMessage(match));
+    return Promise.all(matches.map((match: any) => this.toMessage(match)));
   }
 
   async getThread(channelId: string, threadId: string): Promise<Thread | null> {
@@ -81,8 +82,8 @@ export class SlackProvider implements BusinessContextProvider {
     if (messages.length === 0) return null;
 
     return {
-      parentMessage: this.toMessage(messages[0], channelId),
-      replies: messages.slice(1).map((msg: any) => this.toMessage(msg, channelId)),
+      parentMessage: await this.toMessage(messages[0], channelId),
+      replies: await Promise.all(messages.slice(1).map((msg: any) => this.toMessage(msg, channelId))),
     };
   }
 
@@ -118,12 +119,25 @@ export class SlackProvider implements BusinessContextProvider {
     const state = crypto.randomBytes(32).toString("hex");
     await context.globalState.update("slack-oauth-state", state);
 
-    // Bot scopes: reading channel info and message history
-    const botScopes = "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read";
-    // User scope: search.messages requires a user token (xoxp-), NOT a bot token.
-    // Slack's search API only works with user tokens because search results
-    // reflect the user's access level (including private channels and DMs).
-    const userScopes = "search:read";
+    // User scopes: everything runs under the user token (xoxp-).
+    // search:read     → search.messages (core feature)
+    // channels:read   → conversations.list (channel resolution)
+    // channels:history → conversations.replies (thread fetching)
+    // groups:*        → same for private channels
+    // im/mpim:*       → DMs and group DMs
+    // users:read      → user name resolution
+    const userScopes = [
+      "search:read",
+      "channels:read", "channels:history",
+      "groups:read", "groups:history",
+      "im:read", "im:history",
+      "mpim:read", "mpim:history",
+      "users:read",
+    ].join(",");
+
+    // Minimal bot scope — Slack requires at least one for app installation.
+    // We don't use the bot token; everything goes through the user token.
+    const botScopes = "channels:read";
 
     const authUrl = `https://slack.com/oauth/v2/authorize?${new URLSearchParams({
       client_id: clientId,
@@ -233,11 +247,19 @@ export class SlackProvider implements BusinessContextProvider {
     return this.client;
   }
 
-  private toMessage(raw: any, channelId?: string): Message {
+  /** Converts a raw Slack API message object into our generic Message type.
+   *  Resolves the Slack user ID to a human-readable display name via the cache. */
+  private async toMessage(raw: any, channelId?: string): Promise<Message> {
+    const authorId = raw.user ?? raw.username ?? "unknown";
+    // Resolve user ID (e.g. "U0AG427DM4Z") to display name (e.g. "Kevin White")
+    const author = authorId.startsWith("U")
+      ? await this.cache.resolveUserName(authorId)
+      : authorId;
+
     return {
       id: raw.ts ?? "",
       text: raw.text ?? "",
-      author: raw.user ?? raw.username ?? "unknown",
+      author,
       source: "slack",
       channel: raw.channel?.name ?? raw.channel?.id ?? channelId ?? "",
       timestamp: raw.ts ?? "",

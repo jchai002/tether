@@ -8,7 +8,7 @@ export interface BusinessContextProvider {
   readonly id: string;
   readonly displayName: string;
 
-  isConfigured(): boolean;
+  isConfigured(): boolean | Promise<boolean>;
   configure(): Promise<void>;
   searchMessages(options: SearchOptions): Promise<Message[]>;
   getThread(channelId: string, threadId: string): Promise<Thread | null>;

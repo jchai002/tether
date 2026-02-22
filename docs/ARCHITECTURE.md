@@ -201,6 +201,18 @@ src/webview/
 └── template.ts           # HTML template for webview panel (used by chatPanel.ts)
 ```
 
+## Slack Auth Model
+
+Conduit uses the **user token** (`xoxp-`), not the bot token (`xoxb-`). This is a deliberate design choice:
+
+- **User-scoped visibility.** The user token lets Conduit see exactly what the developer sees — every public channel, every private channel they're in, every DM. No admin setup required to add the bot to specific channels.
+- **Search requires it.** Slack's `search.messages` API only works with user tokens. Bot tokens cannot search at all.
+- **Privacy alignment.** The developer's own OAuth grant controls what Conduit can access. Revoking the token immediately cuts off access.
+
+The bot token is requested with minimal scope (`channels:read`) solely because Slack's OAuth v2 requires at least one bot scope for app installation. It is never stored or used.
+
+All read scopes (`channels:read`, `channels:history`, `groups:*`, `im:*`, `mpim:*`, `users:read`, `search:read`) are requested as **user scopes** so the single user token handles search, channel listing, thread fetching, and user resolution.
+
 ## Why Users Need Claude Code CLI
 
 The Claude Agent SDK spawns the Claude Code CLI as a subprocess internally — Conduit doesn't manage the process or touch API keys. Users leverage their existing Claude Pro/Max subscriptions (no per-token costs). The CLI provides full access to Claude Code's built-in codebase intelligence, file editing, git operations, and all agent capabilities.

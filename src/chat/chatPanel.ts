@@ -258,7 +258,7 @@ export class ChatPanel {
       this.post({ type: "error", text: `Context provider "${config.contextProvider}" not found.` });
       return;
     }
-    if (!provider.isConfigured()) {
+    if (!await provider.isConfigured()) {
       this.post({ type: "error", text: `${provider.displayName} is not configured. Run "Conduit: Configure" from the command palette.` });
       return;
     }
@@ -528,13 +528,13 @@ export class ChatPanel {
 
   /** Creates a new conversation pre-loaded with the given session ID
    *  so the next follow-up message resumes with full prior context. */
-  private recreateConversationForResume(sessionId: string): void {
+  private async recreateConversationForResume(sessionId: string): Promise<void> {
     const config = this.getConfig();
     const provider = this.registry.getBusinessContext(config.contextProvider);
     const folders = vscode.workspace.workspaceFolders;
     const agent = this.codingAgent ?? this.registry.getCodingAgent(config.codingAgent);
 
-    if (agent && provider?.isConfigured() && folders && folders.length > 0) {
+    if (agent && await provider?.isConfigured() && folders && folders.length > 0) {
       this.codingAgent = agent;
       this.conversation = agent.createConversationForResume(
         {
