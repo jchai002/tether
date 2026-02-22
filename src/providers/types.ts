@@ -22,3 +22,16 @@ export interface SearchOptions {
   query: string;
   maxResults?: number;
 }
+
+/** A resolved user from a communication platform. */
+export interface ResolvedUser {
+  id: string;
+  name: string;        // username (e.g. "anna.pico")
+  displayName: string; // human name (e.g. "Anna Pico")
+}
+
+/** A resolved channel from a communication platform. */
+export interface ResolvedChannel {
+  id: string;
+  name: string;        // channel name without prefix (e.g. "all-dashi")
+}

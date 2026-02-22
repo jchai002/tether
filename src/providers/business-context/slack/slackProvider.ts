@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as crypto from "crypto";
 import { WebClient } from "@slack/web-api";
 import { BusinessContextProvider } from "../../businessContextProvider";
-import { Message, Thread, SearchOptions } from "../../types";
+import { Message, Thread, SearchOptions, ResolvedUser, ResolvedChannel } from "../../types";
 import { SlackCache, SlackUser, SlackChannel } from "./slackCache";
 
 /** Conduit's unlisted Slack app client ID. Public value — not a secret.
@@ -87,12 +87,14 @@ export class SlackProvider implements BusinessContextProvider {
     };
   }
 
-  async resolveUser(input: string): Promise<SlackUser[]> {
-    return this.cache.fuzzyMatchUser(input);
+  async resolveUser(input: string): Promise<ResolvedUser[]> {
+    const users = await this.cache.fuzzyMatchUser(input);
+    return users.map((u) => ({ id: u.id, name: u.name, displayName: u.realName }));
   }
 
-  async resolveChannel(input: string): Promise<SlackChannel[]> {
-    return this.cache.fuzzyMatchChannel(input);
+  async resolveChannel(input: string): Promise<ResolvedChannel[]> {
+    const channels = await this.cache.fuzzyMatchChannel(input);
+    return channels.map((c) => ({ id: c.id, name: c.name }));
   }
 
   /**

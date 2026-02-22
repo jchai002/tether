@@ -23,7 +23,7 @@ import * as path from "path";
 import * as fs from "fs";
 import type { BusinessContextProvider } from "../../businessContextProvider";
 import type { CodingAgent, AgentConversation, AgentSetupInfo, ConversationOptions, OnAgentMessage, ModelOption } from "../../codingAgent";
-import { createSearchTool, createGetThreadTool, getToolNames } from "./mcpTools";
+import { createSearchTool, createGetThreadTool, createResolveUserTool, createResolveChannelTool, getToolNames } from "./mcpTools";
 import { buildSystemPrompt } from "./systemPrompt";
 import type { ExtensionToWebviewMessage } from "../../../chat/messages";
 
@@ -363,9 +363,11 @@ export class ClaudeSDKAgent implements CodingAgent {
     }
     const searchTool = createSearchTool(provider);
     const getThreadTool = createGetThreadTool(provider);
+    const resolveUserTool = createResolveUserTool(provider);
+    const resolveChannelTool = createResolveChannelTool(provider);
     this.cachedMcpServer = createSdkMcpServer({
       name: "conduit-context",
-      tools: [searchTool, getThreadTool],
+      tools: [searchTool, getThreadTool, resolveUserTool, resolveChannelTool],
     });
     this.cachedProviderId = provider.id;
     return this.cachedMcpServer;
@@ -575,6 +577,8 @@ class ClaudeConversationImpl implements AgentConversation {
           allowedTools: [
             `mcp__conduit-context__${toolNames.search}`,
             `mcp__conduit-context__${toolNames.getThread}`,
+            `mcp__conduit-context__${toolNames.resolveUser}`,
+            `mcp__conduit-context__${toolNames.resolveChannel}`,
           ],
           abortController: this.abortController,
           permissionMode: this.options.permissionMode ?? "default",
