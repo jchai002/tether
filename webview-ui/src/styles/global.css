@@ -1582,8 +1582,11 @@ body {
    variables so headings, code, tables, etc. match the active theme. */
 
 .markdown-body {
-  line-height: 1.55;
+  line-height: 1.8;
   word-wrap: break-word;
+  /* Override the parent .message-content's pre-wrap — markdown elements
+     (p, ul, pre, etc.) handle spacing via margins, not literal newlines. */
+  white-space: normal;
 }
 
 /* Remove top margin from the first element and bottom margin from the
@@ -1599,7 +1602,7 @@ body {
 .markdown-body h6 {
   color: var(--vscode-foreground);
   font-weight: 600;
-  margin: 12px 0 6px;
+  margin: 32px 0 16px;
   line-height: 1.3;
 }
 .markdown-body h1 { font-size: 1.3em; }
@@ -1607,17 +1610,17 @@ body {
 .markdown-body h3 { font-size: 1.05em; }
 
 .markdown-body p {
-  margin: 6px 0;
+  margin: 16px 0;
 }
 
 .markdown-body ul,
 .markdown-body ol {
-  padding-left: 20px;
-  margin: 6px 0;
+  padding-left: 18px;
+  margin: 16px 0;
 }
 
 .markdown-body li {
-  margin: 2px 0;
+  margin: 3px 0;
 }
 
 /* Nested lists — tighter spacing */
