@@ -12,6 +12,7 @@
 import type { PlanReviewItem } from "../../context/types";
 import { useExtensionState } from "../../context/ExtensionStateContext";
 import { usePostMessage } from "../../hooks/usePostMessage";
+import { Markdown } from "../Markdown";
 import { UserResponsePanel } from "./tools/UserResponsePanel";
 
 interface PlanReviewProps {
@@ -65,7 +66,7 @@ export function PlanReview({ item }: PlanReviewProps) {
       }}
     >
       {item.planText && (
-        <div className="plan-text">{item.planText}</div>
+        <Markdown className="plan-text">{item.planText}</Markdown>
       )}
     </UserResponsePanel>
   );

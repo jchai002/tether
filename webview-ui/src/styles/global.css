@@ -1576,3 +1576,146 @@ body {
   flex-shrink: 0;
   margin-left: 8px;
 }
+
+/* ── Markdown body — styles for react-markdown output ────────────── */
+/* Applied via the shared <Markdown> component. Uses VS Code theme
+   variables so headings, code, tables, etc. match the active theme. */
+
+.markdown-body {
+  line-height: 1.55;
+  word-wrap: break-word;
+}
+
+/* Remove top margin from the first element and bottom margin from the
+   last — prevents extra spacing inside message bubbles. */
+.markdown-body > :first-child { margin-top: 0; }
+.markdown-body > :last-child { margin-bottom: 0; }
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+  margin: 12px 0 6px;
+  line-height: 1.3;
+}
+.markdown-body h1 { font-size: 1.3em; }
+.markdown-body h2 { font-size: 1.15em; }
+.markdown-body h3 { font-size: 1.05em; }
+
+.markdown-body p {
+  margin: 6px 0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 20px;
+  margin: 6px 0;
+}
+
+.markdown-body li {
+  margin: 2px 0;
+}
+
+/* Nested lists — tighter spacing */
+.markdown-body li > ul,
+.markdown-body li > ol {
+  margin: 2px 0;
+}
+
+.markdown-body strong {
+  font-weight: 600;
+  color: var(--vscode-foreground);
+}
+
+.markdown-body em {
+  font-style: italic;
+}
+
+/* Inline code — monospace pill */
+.markdown-body code {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 0.9em;
+  background: var(--vscode-textCodeBlock-background, rgba(255, 255, 255, 0.06));
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* Code blocks — full-width monospace with border */
+.markdown-body pre {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--vscode-textCodeBlock-background, rgba(0, 0, 0, 0.15));
+  border: 1px solid var(--vscode-panel-border, rgba(255, 255, 255, 0.08));
+  overflow-x: auto;
+}
+
+.markdown-body pre code {
+  background: none;
+  padding: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Block quotes — left border accent */
+.markdown-body blockquote {
+  margin: 8px 0;
+  padding: 4px 12px;
+  border-left: 3px solid var(--vscode-panel-border, rgba(255, 255, 255, 0.15));
+  color: var(--vscode-descriptionForeground);
+}
+
+.markdown-body blockquote > :first-child { margin-top: 0; }
+.markdown-body blockquote > :last-child { margin-bottom: 0; }
+
+/* Horizontal rules */
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid var(--vscode-panel-border, rgba(255, 255, 255, 0.1));
+  margin: 12px 0;
+}
+
+/* Tables (GFM) */
+.markdown-body table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 12px;
+  width: 100%;
+}
+
+.markdown-body th,
+.markdown-body td {
+  padding: 4px 10px;
+  border: 1px solid var(--vscode-panel-border, rgba(255, 255, 255, 0.1));
+  text-align: left;
+}
+
+.markdown-body th {
+  font-weight: 600;
+  background: var(--vscode-textCodeBlock-background, rgba(255, 255, 255, 0.04));
+}
+
+/* Links */
+.markdown-body a {
+  color: var(--vscode-textLink-foreground, #3794ff);
+  text-decoration: none;
+}
+
+.markdown-body a:hover {
+  text-decoration: underline;
+}
+
+/* Task lists (GFM) — remove bullet, align checkbox */
+.markdown-body li:has(> input[type="checkbox"]) {
+  list-style: none;
+  margin-left: -20px;
+}
+
+.markdown-body input[type="checkbox"] {
+  margin-right: 6px;
+  vertical-align: middle;
+}

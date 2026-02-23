@@ -11,6 +11,7 @@
  */
 import type { ChatMessage as ChatMessageType } from "../../context/types";
 import { CollapsibleView } from "../CollapsibleView";
+import { Markdown } from "../Markdown";
 
 const LABELS: Record<ChatMessageType["role"], string> = {
   user: "you",
@@ -33,7 +34,7 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message, canCollapse = true }: ChatMessageProps) {
   const label = LABELS[message.role];
-  const content = <div className="message-content">{message.text}</div>;
+  const content = <div className="message-content"><Markdown>{message.text}</Markdown></div>;
   const shouldCollapse = COLLAPSIBLE_ROLES.has(message.role) && canCollapse;
 
   return (
