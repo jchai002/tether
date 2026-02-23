@@ -12,7 +12,6 @@
 import type { PlanReviewItem } from "../../context/types";
 import { useExtensionState } from "../../context/ExtensionStateContext";
 import { usePostMessage } from "../../hooks/usePostMessage";
-import { CollapsibleView } from "../CollapsibleView";
 import { UserResponsePanel } from "./tools/UserResponsePanel";
 
 interface PlanReviewProps {
@@ -65,13 +64,8 @@ export function PlanReview({ item }: PlanReviewProps) {
         post({ type: "plan-review-response", requestId: item.requestId, action });
       }}
     >
-      {/* Show the plan text as a collapsible block between the label and options.
-         * Uses a taller collapsed height (400px) since plans are the primary content
-         * the user needs to review before accepting. */}
       {item.planText && (
-        <CollapsibleView collapsedHeight={400}>
-          <div className="plan-text">{item.planText}</div>
-        </CollapsibleView>
+        <div className="plan-text">{item.planText}</div>
       )}
     </UserResponsePanel>
   );
