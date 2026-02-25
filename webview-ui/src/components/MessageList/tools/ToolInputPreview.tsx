@@ -10,6 +10,7 @@
  */
 import { shortenPath } from "../../../utils/shortenPath";
 import { DiffBlock } from "./DiffBlock";
+import { ToolParams } from "./ToolParams";
 
 interface ToolInputPreviewProps {
   toolName: string;
@@ -107,6 +108,6 @@ export function ToolInputPreview({ toolName, input }: ToolInputPreviewProps) {
     }
 
     default:
-      return <div className="message-content tool-input">{input}</div>;
+      return <ToolParams input={input} />;
   }
 }
