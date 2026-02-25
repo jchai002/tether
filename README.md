@@ -14,8 +14,6 @@
   <a href="https://github.com/jchai002/conduit/blob/main/LICENSE"><img src="https://img.shields.io/github/license/jchai002/conduit" alt="MIT License" /></a>
 </p>
 
-> **Alpha (v0.1.0)** — This project is in early alpha. It works, but expect rough edges. Bug reports and PRs are very welcome. See [Reporting Bugs](#reporting-bugs) below.
-
 ### 1. Ask naturally
 
 <p align="center">
@@ -45,12 +43,20 @@
 - **Permission control** — Ask / Auto-edit / YOLO modes
 - **One-click Slack connect** — OAuth flow, no manual token wrangling
 
+## Prerequisites
+
+Conduit requires [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) to be installed and authenticated. If you already have a Claude subscription (Pro, Team, or Enterprise), you're good — Conduit uses your existing subscription. No separate API key or surprise usage bill.
+
+```bash
+npm install -g @anthropic-ai/claude-code
+claude          # follow the prompts to authenticate
+```
+
 ## Quick Start
 
 1. **Install** [Conduit](https://marketplace.visualstudio.com/items?itemName=jerrychaitea.conduit) from the VS Code Marketplace
-2. **Install** [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code): `npm install -g @anthropic-ai/claude-code`
-3. **Connect Slack** — click the Slack button in the chat panel, or run `Conduit: Configure`
-4. **Start coding** — open the chat panel and describe what you need
+2. **Connect Slack** — click the Slack button in the chat panel, or run `Conduit: Configure`
+3. **Start coding** — open the chat panel and describe what you need
 
 ## How It Works
 
@@ -94,7 +100,9 @@ Adding a provider touches exactly 3 files. See [CONTRIBUTING.md](CONTRIBUTING.md
 
 ## Reporting Bugs
 
-This is an alpha release — if something breaks, please [open an issue](https://github.com/jchai002/conduit/issues/new). Here's a template you can copy-paste:
+> **Alpha (v0.1.0)** — This project is in early alpha. It works, but expect rough edges.
+
+If something breaks, please [open an issue](https://github.com/jchai002/conduit/issues/new). Here's a template you can copy-paste:
 
 ```
 **What happened?**
