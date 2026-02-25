@@ -1,6 +1,6 @@
 {
   "name": "conduit",
-  "displayName": "Conduit — Slack Context for Claude Code",
+  "displayName": "Claude Code Slack Conduit",
   "description": "MCP bridge that links Slack business context to AI coding agents. Search conversations, fetch threads, and code with full context.",
   "keywords": [
     "claude code",

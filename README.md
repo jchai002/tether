@@ -2,8 +2,8 @@
   <img src="media/conduit-icon.svg" width="80" alt="Conduit logo" />
 </p>
 
-<h1 align="center">Conduit</h1>
-<p align="center"><strong>Slack context for Claude Code</strong></p>
+<h1 align="center">Claude Code Slack Conduit</h1>
+<p align="center"><strong>MCP bridge between Slack and Claude Code</strong></p>
 <p align="center">
   MCP bridge that links business conversations to AI coding agents.<br>
   Search Slack, fetch threads, and code with full context — all from VS Code.
