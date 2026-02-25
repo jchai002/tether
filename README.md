@@ -16,11 +16,23 @@
 
 > **Alpha (v0.1.0)** — This project is in early alpha. It works, but expect rough edges. Bug reports and PRs are very welcome. See [Reporting Bugs](#reporting-bugs) below.
 
-<!-- TODO: Replace with actual demo GIF once recorded
+### 1. Ask naturally
+
 <p align="center">
-  <img src="media/demo.gif" width="700" alt="Conduit demo — searching Slack and coding with context" />
+  <img src="media/user_ask.png" width="600" alt="User types: can you implement what sara wanted regarding login page" />
 </p>
--->
+
+### 2. Conduit searches Slack and resolves context
+
+<p align="center">
+  <img src="media/mcp_tool_call.png" width="600" alt="Conduit resolves Sara's user ID and searches Slack for her messages" />
+</p>
+
+### 3. Code with full business context
+
+<p align="center">
+  <img src="media/implementation_result.png" width="600" alt="Claude implements exactly what Sara requested, with a summary of Slack messages and code changes" />
+</p>
 
 ---
 
