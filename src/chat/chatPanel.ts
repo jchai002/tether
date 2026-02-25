@@ -359,13 +359,6 @@ export class ChatPanel {
       case "sdk-text":
         this.messageBuffer.push({ role: "assistant", text: msg.text, timestamp: Date.now() });
         this.dataCollector.recordAssistantText(msg.text.length, msg.text);
-        // Runtime auth fallback: The CLI sends "Not logged in · Please
-        // run /login" as a text message (not an error), then exits with code 1.
-        // Detect it here and switch to the setup screen immediately.
-        if (this.codingAgent?.isAuthError(msg.text)) {
-          debug("Auth error in agent text — switching to setup screen");
-          this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: false, setupInfo: this.codingAgent.getSetupInfo() });
-        }
         break;
       case "sdk-tool-call":
         this.messageBuffer.push({
@@ -428,17 +421,17 @@ export class ChatPanel {
       case "sdk-compact-summary":
         this.messageBuffer.push({ role: "info", text: "[compact] " + msg.text.slice(0, 2000), timestamp: Date.now() });
         break;
+      case "sdk-auth-error":
+        // Typed auth failure from the SDK (assistant.error === 'authentication_failed'
+        // or auth_status event with error). No brittle text matching needed.
+        debug("Typed auth error from SDK — switching to setup screen");
+        this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: false,
+          setupInfo: this.codingAgent?.getSetupInfo() });
+        break;
       case "sdk-error":
         this.messageBuffer.push({ role: "error", text: msg.text, timestamp: Date.now() });
         this.flushMessageBuffer();
         this.dataCollector.endSession({ outcome: "error" });
-        // Runtime auth fallback: The CLI's auth error ("Not logged in")
-        // arrives here as a streamed sdk-error, not as a thrown exception. Detect
-        // it and switch to the setup screen so the user can re-authenticate.
-        if (this.codingAgent?.isAuthError(msg.text)) {
-          debug("Auth error in agent stream — switching to setup screen");
-          this.post({ type: "setup-status", cliInstalled: true, cliAuthenticated: false, setupInfo: this.codingAgent.getSetupInfo() });
-        }
         // Recreate the conversation after unrecoverable errors (content filter,
         // exit code 1, etc.). The old conversation object has stale internal state
         // that causes follow-ups to fail. Recreating with the same session ID lets

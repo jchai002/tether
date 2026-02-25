@@ -228,13 +228,15 @@ export class ClaudeSDKAgent implements CodingAgent {
 
   /** Checks if an error message looks like a Claude CLI auth failure.
    *  Patterns must be specific to Claude — generic words like "unauthorized"
-   *  would falsely match Slack API errors. */
+   *  would falsely match Slack API errors. The bare "/login" pattern was
+   *  removed because it matched URLs in assistant text (e.g. slack.com/login)
+   *  and falsely kicked users to the setup screen during MCP tool calls. */
   isAuthError(text: string): boolean {
     const msg = text.toLowerCase();
     return (
       msg.includes("not logged in") ||
-      msg.includes("/login") ||
-      msg.includes("please run claude login")
+      msg.includes("please run claude login") ||
+      msg.includes("run /login")
     );
   }
 
@@ -739,6 +741,13 @@ class ClaudeConversationImpl implements AgentConversation {
               this._sessionId = msg.session_id;
             }
 
+            // The SDK provides a typed error field on assistant messages —
+            // use it to detect auth failures instead of brittle text matching.
+            if (msg.error === "authentication_failed") {
+              console.log("[Conduit] SDK typed auth error: authentication_failed");
+              this.onMessage({ type: "sdk-auth-error" });
+            }
+
             // Capture per-API-call usage from the raw BetaMessage response.
             // Each assistant message = one API call to Claude, so its usage
             // reflects the actual context size for that specific call.
@@ -890,6 +899,18 @@ class ClaudeConversationImpl implements AgentConversation {
                 ? `Context compacted from ${preTokens.toLocaleString()} tokens.`
                 : "Context compacted.";
               this.onMessage({ type: "sdk-compact-summary", text: summary });
+            }
+            break;
+          }
+
+          // "auth_status" = The SDK detected an auth state change (e.g. token
+          // expired mid-conversation). Use the typed error field instead of
+          // guessing from text content.
+          case "auth_status": {
+            const authMsg = msg as any;
+            console.log(`[Conduit] auth_status: isAuthenticating=${authMsg.isAuthenticating} error=${authMsg.error}`);
+            if (authMsg.error) {
+              this.onMessage({ type: "sdk-auth-error" });
             }
             break;
           }

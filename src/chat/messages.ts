@@ -73,6 +73,9 @@ export type ExtensionToWebviewMessage =
       contextWindow?: number; inputTokens?: number; outputTokens?: number;
       cacheReadTokens?: number; cacheCreationTokens?: number }
   | { type: "sdk-error"; text: string }
+  // Typed auth failure — the SDK reported authentication_failed on an
+  // assistant message or auth_status event (no brittle text matching needed)
+  | { type: "sdk-auth-error" }
   // Compaction summary — shown when the SDK compacts the conversation context
   | { type: "sdk-compact-summary"; text: string }
   // Permission prompt
