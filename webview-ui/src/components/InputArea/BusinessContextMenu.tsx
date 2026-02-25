@@ -50,7 +50,7 @@ export function BusinessContextMenu() {
               : "var(--vscode-descriptionForeground, #5c6370)",
           }}
         />
-        Business Context Sources
+        {anyConnected ? "Slack Connected" : "Connect Slack"}
       </button>
 
       {/* Drop-up popup */}
