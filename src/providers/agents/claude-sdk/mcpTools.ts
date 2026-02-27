@@ -50,6 +50,10 @@ export function createSearchTool(provider: BusinessContextProvider) {
       "",
       "IMPORTANT: Plain text search matches MESSAGE TEXT, not author names.",
       "To find messages by a person, use resolve_user first → then from:@username.",
+      "",
+      "SYNONYM RETRY: If a search returns 0 results or very few, retry with synonyms",
+      "and related terms. For example: 'rate limiting' → 'throttling', 'API limits',",
+      "'request quota'. Try 2-3 variations before concluding nothing exists.",
     ].join("\n"),
     {
       query: z.string().describe(
